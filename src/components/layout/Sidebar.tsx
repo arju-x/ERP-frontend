@@ -145,9 +145,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Nav items */}
       <List sx={{ flex: 1, py: 1, overflowY: 'auto', overflowX: 'hidden' }}>
         {visibleItems.map((item) => {
-          const isActive =
-            location.pathname === item.path ||
-            (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
+          const isActive = location.pathname === item.path;
 
           const button = (
             <ListItemButton
