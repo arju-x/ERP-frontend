@@ -211,23 +211,25 @@ export default function UsersPage() {
                   </Typography>
                 </Box>
 
-                {/* Actions */}
-                <Stack direction="row" spacing={0.5}>
-                  <Tooltip title="Edit">
-                    <IconButton size="small" onClick={() => openEdit(u)}><EditIcon fontSize="small" /></IconButton>
-                  </Tooltip>
-                  <Tooltip title="Reset Password">
-                    <IconButton size="small" color="warning" onClick={() => { setPasswordTarget(u); passwordForm.reset(); }}>
-                      <LockResetIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title={u._id === me?.id ? "Can't delete your own account" : 'Delete'}>
-                    <span>
-                      <IconButton size="small" color="error" disabled={u._id === me?.id} onClick={() => setDeleteTarget(u)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
+                {/* Actions — hidden entirely for own account */}
+                <Stack direction="row" spacing={0.5} minWidth={96}>
+                  {u._id !== me?.id && (
+                    <>
+                      <Tooltip title="Edit">
+                        <IconButton size="small" onClick={() => openEdit(u)}><EditIcon fontSize="small" /></IconButton>
+                      </Tooltip>
+                      <Tooltip title="Reset Password">
+                        <IconButton size="small" color="warning" onClick={() => { setPasswordTarget(u); passwordForm.reset(); }}>
+                          <LockResetIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete">
+                        <IconButton size="small" color="error" onClick={() => setDeleteTarget(u)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </>
+                  )}
                 </Stack>
               </Stack>
             </Paper>
