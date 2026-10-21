@@ -52,7 +52,6 @@ function StockBadge({ stock, threshold }: { stock: number; threshold: number }) 
 
 const STATUS_FILTERS = [
   { label: 'All',          value: '' },
-  { label: 'Active',       value: 'active' },
   { label: 'Low Stock',    value: 'low_stock' },
   { label: 'Out of Stock', value: 'out_of_stock' },
 ];
