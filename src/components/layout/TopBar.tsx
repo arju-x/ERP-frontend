@@ -14,7 +14,6 @@ import Tooltip from '@mui/material/Tooltip';
 
 import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsIcon from '@mui/icons-material/Notifications';
-import SearchIcon from '@mui/icons-material/Search';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -78,13 +77,7 @@ const TopBar: React.FC<TopBarProps> = ({ onSidebarToggle, sidebarWidth }) => {
 
         {/* Right: actions */}
         <Box display="flex" alignItems="center" gap={0.5}>
-          <Tooltip title="Search">
-            <IconButton size="small">
-              <SearchIcon />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip title="Notifications">
+<Tooltip title="Notifications">
             <IconButton size="small">
               <Badge badgeContent={0} color="error">
                 <NotificationsIcon />
