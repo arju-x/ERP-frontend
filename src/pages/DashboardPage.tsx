@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Box, Grid, Paper, Typography, Stack, Button, CircularProgress,
-  Divider, Chip,
+  Chip,
 } from '@mui/material';
 import {
   PointOfSale as POSIcon, Add as AddIcon,
@@ -121,43 +121,9 @@ export default function DashboardPage() {
         </Grid>
       </Grid>
 
-      {/* Month summary + recent sales */}
+      {/* Recent sales — full width */}
       <Grid container spacing={2}>
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2.5, height: '100%' }}>
-            <Typography variant="subtitle1" fontWeight={700} mb={2}>This Month</Typography>
-            <Stack spacing={1.5}>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography variant="body2" color="text.secondary">Total Sales</Typography>
-                {loading ? <CircularProgress size={16} /> : (
-                  <Typography variant="body2" fontWeight={600}>{stats?.monthSales ?? 0} bills</Typography>
-                )}
-              </Stack>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography variant="body2" color="text.secondary">Revenue</Typography>
-                {loading ? <CircularProgress size={16} /> : (
-                  <Typography variant="body2" fontWeight={600} color="success.main">
-                    {stats ? fmt(stats.monthRevenue) : '—'}
-                  </Typography>
-                )}
-              </Stack>
-            </Stack>
-
-            <Divider sx={{ my: 2 }} />
-
-            <Typography variant="subtitle2" fontWeight={600} mb={1.5}>Quick Actions</Typography>
-            <Stack spacing={1}>
-              <Button variant="contained" fullWidth startIcon={<POSIcon />} onClick={() => navigate('/sales')}>
-                Create New Bill
-              </Button>
-              <Button variant="outlined" fullWidth startIcon={<AddIcon />} onClick={() => navigate('/products')}>
-                Add Product
-              </Button>
-            </Stack>
-          </Paper>
-        </Grid>
-
-        <Grid item xs={12} md={8}>
+        <Grid item xs={12}>
           <Paper sx={{ p: 2.5 }}>
             <Typography variant="subtitle1" fontWeight={700} mb={2}>Recent Sales</Typography>
             {loading ? (
