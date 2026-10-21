@@ -17,7 +17,6 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import SearchIcon from '@mui/icons-material/Search';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
-import PersonIcon from '@mui/icons-material/Person';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 
@@ -120,10 +119,6 @@ const TopBar: React.FC<TopBarProps> = ({ onSidebarToggle, sidebarWidth }) => {
               <Typography variant="caption" color="text.secondary">{user?.email ?? ''}</Typography>
             </Box>
             <Divider />
-            <MenuItem onClick={() => { handleMenuClose(); navigate('/settings'); }}>
-              <PersonIcon fontSize="small" sx={{ mr: 1 }} />
-              Profile
-            </MenuItem>
             <MenuItem onClick={() => { handleMenuClose(); navigate('/settings'); }}>
               <SettingsIcon fontSize="small" sx={{ mr: 1 }} />
               Settings
