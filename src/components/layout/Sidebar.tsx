@@ -76,6 +76,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const appName = import.meta.env.VITE_APP_NAME || import.meta.env.VITE_SHOP_NAME || 'Industrial ERP';
 
   // In temporary (mobile) mode the drawer is always full-width and never collapsed
   const effectiveCollapsed = variant === 'temporary' ? false : collapsed;
@@ -128,7 +129,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             noWrap
             sx={{ color: 'white', fontSize: '1rem' }}
           >
-            Industrial ERP
+            {appName}
           </Typography>
         )}
         <IconButton

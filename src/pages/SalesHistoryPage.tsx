@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box, TextField, InputAdornment, Stack, Chip, IconButton, Tooltip,
   Dialog, DialogContent, Button, Typography, Divider, Paper,
@@ -9,6 +10,7 @@ import {
   Search as SearchIcon, Visibility as ViewIcon,
   Print as PrintIcon, Receipt as ReceiptIcon,
   Close as CloseIcon, CalendarToday,
+  AssignmentReturn as ReturnIcon,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { useSnackbar } from 'notistack';
@@ -66,6 +68,7 @@ function MethodBadge({ method }: { method: string }) {
 
 export default function SalesHistoryPage() {
   const theme = useTheme();
+  const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
 
   const [sales,        setSales]        = useState<Sale[]>([]);
@@ -136,28 +139,51 @@ export default function SalesHistoryPage() {
       </Stack>
 
       {/* Table */}
-      <Paper elevation={0} sx={{ border: 1, borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
-        <TableContainer>
-          <Table size="small">
+      <Paper elevation={0} sx={{ border: 1, borderColor: 'divider', borderRadius: 2.5, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+        <TableContainer
+          sx={{
+            overflowX: 'auto',
+            scrollbarWidth: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
+          }}
+        >
+          <Table size="small" sx={{ width: '100%', tableLayout: { md: 'fixed', xs: 'auto' } }}>
             <TableHead>
               <TableRow sx={{ bgcolor: 'primary.main' }}>
-                {['Invoice #', 'Customer', 'Items', 'Total', 'Paid', 'Balance', 'Method', 'Status', 'Date', ''].map((h) => (
-                  <TableCell key={h} sx={{ color: 'white', fontWeight: 700, whiteSpace: 'nowrap', py: 1.5, fontSize: 13 }}>
-                    {h}
-                  </TableCell>
-                ))}
+                <TableCell sx={{ color: 'white', fontWeight: 700, py: 1.5, px: 2, fontSize: 12.5, width: { md: '12%' } }}>
+                  INVOICE #
+                </TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 700, py: 1.5, px: 1.5, fontSize: 12.5, width: { md: '15%' } }}>
+                  CUSTOMER
+                </TableCell>
+                <TableCell align="center" sx={{ color: 'white', fontWeight: 700, py: 1.5, px: 1, fontSize: 12.5, width: { md: '7%' } }}>
+                  ITEMS
+                </TableCell>
+                <TableCell align="right" sx={{ color: 'white', fontWeight: 700, py: 1.5, px: 1.5, fontSize: 12.5, width: { md: '11%' } }}>
+                  TOTAL
+                </TableCell>
+                <TableCell align="right" sx={{ color: 'white', fontWeight: 700, py: 1.5, px: 1.5, fontSize: 12.5, width: { md: '11%' } }}>
+                  PAID
+                </TableCell>
+                <TableCell align="center" sx={{ color: 'white', fontWeight: 700, py: 1.5, px: 1, fontSize: 12.5, width: { md: '9%' } }}>
+                  STATUS
+                </TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 700, py: 1.5, px: 1.5, fontSize: 12.5, width: { md: '11%' } }}>
+                  DATE
+                </TableCell>
+                <TableCell align="right" sx={{ color: 'white', fontWeight: 700, py: 1.5, px: 1, width: { md: '5%' } }} />
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center" sx={{ py: 6 }}>
+                  <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
                     <CircularProgress size={32} />
                   </TableCell>
                 </TableRow>
               ) : sales.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center" sx={{ py: 6 }}>
+                  <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
                     <Stack alignItems="center" spacing={1}>
                       <ReceiptIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
                       <Typography color="text.secondary" variant="body2">
@@ -168,7 +194,9 @@ export default function SalesHistoryPage() {
                 </TableRow>
               ) : (
                 sales.map((s, i) => (
-                  <TableRow key={s._id} hover
+                  <TableRow
+                    key={s._id}
+                    hover
                     sx={{
                       bgcolor: i % 2 === 0 ? 'transparent' : (theme.palette.mode === 'light' ? '#fafafa' : '#1a1a1a'),
                       '&:hover': { bgcolor: theme.palette.mode === 'light' ? '#f0f4ff' : '#1e2a3a' },
@@ -176,40 +204,69 @@ export default function SalesHistoryPage() {
                     }}
                     onClick={() => setViewSale(s)}
                   >
-                    <TableCell>
-                      <Typography variant="body2" fontWeight={700} color="primary.main" sx={{ fontFamily: 'monospace' }}>
+                    <TableCell sx={{ px: 2 }}>
+                      <Typography variant="body2" fontWeight={700} color="primary.main" noWrap sx={{ fontFamily: 'monospace', fontSize: 12.5 }}>
                         {s.invoiceNumber}
                       </Typography>
                     </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight={600}>{s.customerName}</Typography>
+                    <TableCell sx={{ px: 1.5 }}>
+                      <Typography variant="body2" fontWeight={600} noWrap sx={{ fontSize: 12.5 }} title={s.customerName}>
+                        {s.customerName}
+                      </Typography>
                     </TableCell>
-                    <TableCell align="center">
-                      <Chip label={s.items.length} size="small" variant="outlined" sx={{ minWidth: 32, fontSize: 12 }} />
+                    <TableCell align="center" sx={{ px: 1 }}>
+                      <Chip label={s.items.length} size="small" variant="outlined" sx={{ minWidth: 28, height: 22, fontSize: 11, fontWeight: 600 }} />
                     </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight={700}>{fmt(s.grandTotal)}</Typography>
+                    <TableCell align="right" sx={{ px: 1.5 }}>
+                      <Typography variant="body2" fontWeight={700} noWrap sx={{ fontSize: 13 }}>
+                        {fmt(s.grandTotal)}
+                      </Typography>
                     </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="success.main" fontWeight={600}>{fmt(s.paidAmount)}</Typography>
+                    <TableCell align="right" sx={{ px: 1.5 }}>
+                      <Typography variant="body2" color="success.main" fontWeight={600} noWrap sx={{ fontSize: 12.5 }}>
+                        {fmt(s.paidAmount)}
+                      </Typography>
                     </TableCell>
-                    <TableCell>
-                      {s.balanceDue > 0
-                        ? <Typography variant="body2" color="error.main" fontWeight={600}>{fmt(s.balanceDue)}</Typography>
-                        : <Typography variant="body2" color="text.disabled">—</Typography>}
+                    <TableCell align="center" sx={{ px: 1 }}>
+                      <PaymentBadge status={s.paymentStatus} />
                     </TableCell>
-                    <TableCell><MethodBadge method={s.paymentMethod} /></TableCell>
-                    <TableCell><PaymentBadge status={s.paymentStatus} /></TableCell>
-                    <TableCell>
-                      <Typography variant="caption" color="text.secondary" noWrap>{fmtDate(s.invoiceDate)}</Typography>
+                    <TableCell sx={{ px: 1.5 }}>
+                      <Typography variant="body2" fontWeight={600} noWrap sx={{ fontSize: 12 }}>
+                        {new Date(s.invoiceDate).toLocaleDateString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: 10.5 }}>
+                        {new Date(s.invoiceDate).toLocaleTimeString('en-IN', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true,
+                        })}
+                      </Typography>
                     </TableCell>
-                    <TableCell align="right" onClick={(e) => e.stopPropagation()}>
-                      <Tooltip title="View Invoice">
-                        <IconButton size="small" onClick={() => setViewSale(s)}
-                          sx={{ '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main' } }}>
-                          <ViewIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                      </Tooltip>
+                    <TableCell align="right" sx={{ px: 1 }} onClick={(e) => e.stopPropagation()}>
+                      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                        <Tooltip title="View Invoice">
+                          <IconButton
+                            size="small"
+                            onClick={() => setViewSale(s)}
+                            sx={{ '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main' } }}
+                          >
+                            <ViewIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Process Return">
+                          <IconButton
+                            size="small"
+                            onClick={() => navigate(`/returns?invoiceId=${s.invoiceNumber}`)}
+                            sx={{ '&:hover': { bgcolor: alpha(theme.palette.secondary.main, 0.1), color: 'secondary.main' } }}
+                          >
+                            <ReturnIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
                     </TableCell>
                   </TableRow>
                 ))
@@ -354,6 +411,18 @@ export default function SalesHistoryPage() {
             {/* Footer */}
             <Box sx={{ px: 3, py: 2, borderTop: 1, borderColor: 'divider', bgcolor: 'grey.50' }}>
               <Stack direction="row" spacing={1.5} justifyContent="flex-end">
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  startIcon={<ReturnIcon />}
+                  onClick={() => {
+                    const inv = viewSale.invoiceNumber;
+                    setViewSale(null);
+                    navigate(`/returns?invoiceId=${inv}`);
+                  }}
+                >
+                  Return Items
+                </Button>
                 <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => window.print()}>Print</Button>
                 <Button variant="contained" onClick={() => setViewSale(null)}>Close</Button>
               </Stack>

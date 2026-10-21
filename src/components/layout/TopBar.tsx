@@ -32,6 +32,7 @@ const TopBar: React.FC<TopBarProps> = ({ onSidebarToggle, sidebarWidth }) => {
   const navigate = useNavigate();
   const { toggleColorMode, mode } = useColorMode();
   const { user, logout } = useAuthStore();
+  const appName = import.meta.env.VITE_APP_NAME || import.meta.env.VITE_SHOP_NAME || 'Industrial ERP';
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -71,7 +72,7 @@ const TopBar: React.FC<TopBarProps> = ({ onSidebarToggle, sidebarWidth }) => {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" fontWeight={600} noWrap sx={{ display: { xs: 'none', sm: 'block' } }}>
-            Industrial ERP
+            {appName}
           </Typography>
         </Box>
 

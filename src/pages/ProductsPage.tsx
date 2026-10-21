@@ -3,11 +3,12 @@ import {
   Box, Button, TextField, InputAdornment, Chip, Stack, IconButton,
   Dialog, DialogTitle, DialogContent, DialogActions, MenuItem, Tooltip,
   CircularProgress, Typography, Paper, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, TablePagination, Divider,
+  TableContainer, TableHead, TableRow, TablePagination, Divider, Popover,
 } from '@mui/material';
 import {
   Add as AddIcon, Search as SearchIcon, Edit as EditIcon,
   Delete as DeleteIcon, Inventory2 as InventoryIcon, Close as CloseIcon,
+  Tune as TuneIcon,
 } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -56,6 +57,17 @@ const STATUS_FILTERS = [
   { label: 'Out of Stock', value: 'out_of_stock' },
 ];
 
+const SORT_OPTIONS = [
+  { label: 'Newest First', sortBy: 'createdAt', sortOrder: 'desc' },
+  { label: 'Oldest First', sortBy: 'createdAt', sortOrder: 'asc' },
+  { label: 'Name (A to Z)', sortBy: 'name', sortOrder: 'asc' },
+  { label: 'Name (Z to A)', sortBy: 'name', sortOrder: 'desc' },
+  { label: 'Price (Low to High)', sortBy: 'sellingPrice', sortOrder: 'asc' },
+  { label: 'Price (High to Low)', sortBy: 'sellingPrice', sortOrder: 'desc' },
+  { label: 'Stock (Low to High)', sortBy: 'currentStock', sortOrder: 'asc' },
+  { label: 'Stock (High to Low)', sortBy: 'currentStock', sortOrder: 'desc' },
+] as const;
+
 // ── Field label helper ────────────────────────────────────────────────────────
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
@@ -74,6 +86,16 @@ export default function ProductsPage() {
   const [loading,        setLoading]        = useState(false);
   const [search,         setSearch]         = useState('');
   const [statusFilter,   setStatusFilter]   = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [brandFilter,    setBrandFilter]    = useState('');
+  const [unitFilter,     setUnitFilter]     = useState('');
+  const [minPriceFilter, setMinPriceFilter] = useState('');
+  const [maxPriceFilter, setMaxPriceFilter] = useState('');
+  const [sortBy,         setSortBy]         = useState('createdAt');
+  const [sortOrder,      setSortOrder]      = useState<'asc' | 'desc'>('desc');
+  const [filterAnchorEl, setFilterAnchorEl] = useState<null | HTMLElement>(null);
+  const isFilterOpen = Boolean(filterAnchorEl);
+
   const [page,           setPage]           = useState(0);
   const [rowsPerPage,    setRowsPerPage]    = useState(20);
   const [dialogOpen,     setDialogOpen]     = useState(false);
@@ -81,6 +103,26 @@ export default function ProductsPage() {
   const [saving,         setSaving]         = useState(false);
   const [deleteTarget,   setDeleteTarget]   = useState<Product | null>(null);
   const [categoryOptions,setCategoryOptions]= useState<string[]>([]);
+
+  const activeFilterCount = (statusFilter ? 1 : 0) +
+    (categoryFilter ? 1 : 0) +
+    (brandFilter.trim() ? 1 : 0) +
+    (unitFilter ? 1 : 0) +
+    (minPriceFilter !== '' ? 1 : 0) +
+    (maxPriceFilter !== '' ? 1 : 0) +
+    (sortBy !== 'createdAt' || sortOrder !== 'desc' ? 1 : 0);
+
+  function handleClearAllFilters() {
+    setStatusFilter('');
+    setCategoryFilter('');
+    setBrandFilter('');
+    setUnitFilter('');
+    setMinPriceFilter('');
+    setMaxPriceFilter('');
+    setSortBy('createdAt');
+    setSortOrder('desc');
+    setPage(0);
+  }
 
   const { control, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -95,6 +137,13 @@ export default function ProductsPage() {
       const res = await productsApi.getProducts({
         search: search || undefined,
         status: statusFilter || undefined,
+        category: categoryFilter || undefined,
+        brand: brandFilter.trim() || undefined,
+        unit: unitFilter || undefined,
+        minPrice: minPriceFilter !== '' ? Number(minPriceFilter) : undefined,
+        maxPrice: maxPriceFilter !== '' ? Number(maxPriceFilter) : undefined,
+        sortBy: sortBy || undefined,
+        sortOrder: sortOrder || undefined,
         page: page + 1,
         pageSize: rowsPerPage,
       });
@@ -103,7 +152,20 @@ export default function ProductsPage() {
     } catch {
       enqueueSnackbar('Failed to load products', { variant: 'error' });
     } finally { setLoading(false); }
-  }, [search, statusFilter, page, rowsPerPage, enqueueSnackbar]);
+  }, [
+    search,
+    statusFilter,
+    categoryFilter,
+    brandFilter,
+    unitFilter,
+    minPriceFilter,
+    maxPriceFilter,
+    sortBy,
+    sortOrder,
+    page,
+    rowsPerPage,
+    enqueueSnackbar,
+  ]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
@@ -114,7 +176,7 @@ export default function ProductsPage() {
   useEffect(() => {
     const t = setTimeout(() => setPage(0), 350);
     return () => clearTimeout(t);
-  }, [search]);
+  }, [search, brandFilter, minPriceFilter, maxPriceFilter]);
 
   // ── Dialog open ───────────────────────────────────────────────────────────────
   function openAdd() {
@@ -178,27 +240,364 @@ export default function ProductsPage() {
         }
       />
 
-      {/* Filters */}
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mb={2.5} alignItems={{ sm: 'center' }}>
-        <TextField
-          size="small" placeholder="Search by name, SKU or brand…" value={search}
-          onChange={(e) => setSearch(e.target.value)} sx={{ minWidth: 280 }}
-          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
-        />
-        <Stack direction="row" spacing={1} flexWrap="wrap">
-          {STATUS_FILTERS.map((f) => (
-            <Chip key={f.value} label={f.label} clickable size="small"
-              color={statusFilter === f.value ? 'primary' : 'default'}
-              variant={statusFilter === f.value ? 'filled' : 'outlined'}
-              onClick={() => { setStatusFilter(f.value); setPage(0); }}
-            />
-          ))}
+      {/* Filters Bar */}
+      <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        spacing={2}
+        mb={activeFilterCount > 0 ? 1.5 : 2.5}
+        alignItems={{ xs: 'stretch', md: 'center' }}
+        justifyContent="space-between"
+      >
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }} flexWrap="wrap" flex={1}>
+          <TextField
+            size="small"
+            placeholder="Search by name, SKU or brand…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            sx={{ minWidth: 280, maxWidth: { sm: 360 } }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+              ...(search ? {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setSearch('')}>
+                      <CloseIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              } : {}),
+            }}
+          />
+
+          <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
+            {STATUS_FILTERS.map((f) => (
+              <Chip
+                key={f.value}
+                label={f.label}
+                clickable
+                size="small"
+                color={statusFilter === f.value ? 'primary' : 'default'}
+                variant={statusFilter === f.value ? 'filled' : 'outlined'}
+                onClick={() => {
+                  setStatusFilter(statusFilter === f.value && f.value !== '' ? '' : f.value);
+                  setPage(0);
+                }}
+                sx={{ fontWeight: 600, height: 32 }}
+              />
+            ))}
+
+            {/* Filter Button */}
+            <Button
+              variant={activeFilterCount > 0 ? 'contained' : 'outlined'}
+              size="small"
+              startIcon={<TuneIcon fontSize="small" />}
+              onClick={(e) => setFilterAnchorEl(e.currentTarget)}
+              sx={{
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+                height: 32,
+                px: 1.5,
+                fontSize: '0.8125rem',
+                borderColor: activeFilterCount > 0 ? 'primary.main' : 'divider',
+                boxShadow: 'none',
+                ...(activeFilterCount > 0
+                  ? {
+                      bgcolor: 'primary.main',
+                      color: 'white',
+                      '&:hover': { bgcolor: 'primary.dark', boxShadow: 'none' },
+                    }
+                  : {
+                      color: 'text.primary',
+                      bgcolor: 'background.paper',
+                      '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
+                    }),
+              }}
+            >
+              Filter
+              {activeFilterCount > 0 && (
+                <Box
+                  component="span"
+                  sx={{
+                    ml: 0.75,
+                    px: 0.7,
+                    py: 0.1,
+                    borderRadius: '10px',
+                    bgcolor: 'white',
+                    color: 'primary.main',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {activeFilterCount}
+                </Box>
+              )}
+            </Button>
+          </Stack>
         </Stack>
       </Stack>
 
+      {/* Active Filter Chips */}
+      {activeFilterCount > 0 && (
+        <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center" mb={2}>
+          <Typography variant="caption" color="text.secondary" fontWeight={700}>
+            Filtered by:
+          </Typography>
+          {statusFilter && (
+            <Chip
+              size="small"
+              label={`Status: ${statusFilter === 'low_stock' ? 'Low Stock' : statusFilter === 'out_of_stock' ? 'Out of Stock' : statusFilter === 'in_stock' ? 'In Stock' : statusFilter}`}
+              onDelete={() => { setStatusFilter(''); setPage(0); }}
+              sx={{ borderRadius: 1.5 }}
+            />
+          )}
+          {categoryFilter && (
+            <Chip
+              size="small"
+              label={`Category: ${categoryFilter}`}
+              onDelete={() => { setCategoryFilter(''); setPage(0); }}
+              sx={{ borderRadius: 1.5 }}
+            />
+          )}
+          {brandFilter.trim() && (
+            <Chip
+              size="small"
+              label={`Brand: ${brandFilter}`}
+              onDelete={() => { setBrandFilter(''); setPage(0); }}
+              sx={{ borderRadius: 1.5 }}
+            />
+          )}
+          {unitFilter && (
+            <Chip
+              size="small"
+              label={`Unit: ${unitFilter}`}
+              onDelete={() => { setUnitFilter(''); setPage(0); }}
+              sx={{ borderRadius: 1.5, textTransform: 'capitalize' }}
+            />
+          )}
+          {(minPriceFilter || maxPriceFilter) && (
+            <Chip
+              size="small"
+              label={`Price: ₹${minPriceFilter || '0'} - ${maxPriceFilter ? '₹' + maxPriceFilter : 'Max'}`}
+              onDelete={() => { setMinPriceFilter(''); setMaxPriceFilter(''); setPage(0); }}
+              sx={{ borderRadius: 1.5 }}
+            />
+          )}
+          {(sortBy !== 'createdAt' || sortOrder !== 'desc') && (
+            <Chip
+              size="small"
+              label={`Sorted: ${SORT_OPTIONS.find((o) => o.sortBy === sortBy && o.sortOrder === sortOrder)?.label || 'Custom'}`}
+              onDelete={() => { setSortBy('createdAt'); setSortOrder('desc'); setPage(0); }}
+              sx={{ borderRadius: 1.5 }}
+            />
+          )}
+          <Button
+            size="small"
+            variant="text"
+            color="error"
+            onClick={handleClearAllFilters}
+            sx={{ textTransform: 'none', fontSize: 12, p: 0.5, minWidth: 'auto', fontWeight: 600 }}
+          >
+            Clear all
+          </Button>
+        </Stack>
+      )}
+
+      {/* Filter Popover */}
+      <Popover
+        open={isFilterOpen}
+        anchorEl={filterAnchorEl}
+        onClose={() => setFilterAnchorEl(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+        PaperProps={{
+          sx: {
+            mt: 1,
+            width: 360,
+            maxWidth: '92vw',
+            borderRadius: 2.5,
+            p: 2.5,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.12)',
+            border: 1,
+            borderColor: 'divider',
+          },
+        }}
+      >
+        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.5}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <TuneIcon fontSize="small" color="primary" />
+            <Typography variant="subtitle2" fontWeight={700}>
+              Filters & Sort
+            </Typography>
+            {activeFilterCount > 0 && (
+              <Chip
+                label={`${activeFilterCount} active`}
+                size="small"
+                color="primary"
+                sx={{ height: 20, fontSize: 11, fontWeight: 700 }}
+              />
+            )}
+          </Stack>
+          <IconButton size="small" onClick={() => setFilterAnchorEl(null)} sx={{ color: 'text.secondary' }}>
+            <CloseIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Stack>
+        <Divider sx={{ mb: 2 }} />
+
+        <Stack spacing={2}>
+          {/* Category */}
+          <Box>
+            <FieldLabel>Category</FieldLabel>
+            <TextField
+              select
+              fullWidth
+              size="small"
+              value={categoryFilter}
+              onChange={(e) => { setCategoryFilter(e.target.value); setPage(0); }}
+            >
+              <MenuItem value=""><em>All Categories</em></MenuItem>
+              {categoryOptions.map((c) => (
+                <MenuItem key={c} value={c}>{c}</MenuItem>
+              ))}
+            </TextField>
+          </Box>
+
+          {/* Stock Status */}
+          <Box>
+            <FieldLabel>Stock Status</FieldLabel>
+            <TextField
+              select
+              fullWidth
+              size="small"
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
+            >
+              <MenuItem value="">All Statuses</MenuItem>
+              <MenuItem value="in_stock">In Stock</MenuItem>
+              <MenuItem value="low_stock">Low Stock</MenuItem>
+              <MenuItem value="out_of_stock">Out of Stock</MenuItem>
+            </TextField>
+          </Box>
+
+          {/* Brand */}
+          <Box>
+            <FieldLabel>Brand / Manufacturer</FieldLabel>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="e.g. Vega, MRF"
+              value={brandFilter}
+              onChange={(e) => { setBrandFilter(e.target.value); setPage(0); }}
+            />
+          </Box>
+
+          {/* Unit */}
+          <Box>
+            <FieldLabel>Unit of Measure</FieldLabel>
+            <TextField
+              select
+              fullWidth
+              size="small"
+              value={unitFilter}
+              onChange={(e) => { setUnitFilter(e.target.value); setPage(0); }}
+            >
+              <MenuItem value=""><em>All Units</em></MenuItem>
+              {UNITS.map((u) => (
+                <MenuItem key={u} value={u} sx={{ textTransform: 'capitalize' }}>{u}</MenuItem>
+              ))}
+            </TextField>
+          </Box>
+
+          {/* Price Range */}
+          <Box>
+            <FieldLabel>Selling Price Range (₹)</FieldLabel>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Min"
+                type="number"
+                value={minPriceFilter}
+                onChange={(e) => { setMinPriceFilter(e.target.value); setPage(0); }}
+                InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }}
+                inputProps={{ min: 0 }}
+              />
+              <Typography variant="body2" color="text.secondary">to</Typography>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Max"
+                type="number"
+                value={maxPriceFilter}
+                onChange={(e) => { setMaxPriceFilter(e.target.value); setPage(0); }}
+                InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }}
+                inputProps={{ min: 0 }}
+              />
+            </Stack>
+          </Box>
+
+          {/* Sort By */}
+          <Box>
+            <FieldLabel>Sort By</FieldLabel>
+            <TextField
+              select
+              fullWidth
+              size="small"
+              value={`${sortBy}:${sortOrder}`}
+              onChange={(e) => {
+                const [sb, so] = e.target.value.split(':');
+                setSortBy(sb);
+                setSortOrder(so as 'asc' | 'desc');
+                setPage(0);
+              }}
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <MenuItem key={`${opt.sortBy}:${opt.sortOrder}`} value={`${opt.sortBy}:${opt.sortOrder}`}>
+                  {opt.label}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Box>
+        </Stack>
+
+        <Divider sx={{ my: 2 }} />
+
+        <Stack direction="row" spacing={1.5} justifyContent="space-between">
+          <Button
+            size="small"
+            variant="outlined"
+            color="inherit"
+            disabled={activeFilterCount === 0}
+            onClick={handleClearAllFilters}
+            sx={{ textTransform: 'none' }}
+          >
+            Reset All
+          </Button>
+          <Button
+            size="small"
+            variant="contained"
+            onClick={() => setFilterAnchorEl(null)}
+            sx={{ textTransform: 'none', px: 2.5 }}
+          >
+            Done
+          </Button>
+        </Stack>
+      </Popover>
+
       {/* Table */}
-      <Paper elevation={0} sx={{ border: 1, borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
-        <TableContainer>
+      <Paper elevation={0} sx={{ border: 1, borderColor: 'divider', borderRadius: 2.5, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+        <TableContainer
+          sx={{
+            overflowX: 'auto',
+            scrollbarWidth: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
+          }}
+        >
           <Table size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: 'primary.main' }}>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,7 +9,6 @@ import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
-import Link from '@mui/material/Link';
 import Container from '@mui/material/Container';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
@@ -32,6 +31,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuthStore();
+  const appName = import.meta.env.VITE_APP_NAME || import.meta.env.VITE_SHOP_NAME || 'Industrial ERP';
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -85,7 +85,7 @@ const LoginPage: React.FC = () => {
             <FactoryIcon sx={{ color: 'white', fontSize: 32 }} />
           </Box>
           <Typography variant="h5" fontWeight={700} color="primary.main">
-            Industrial ERP
+            {appName}
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Sign in to your account
@@ -162,14 +162,6 @@ const LoginPage: React.FC = () => {
           </form>
         </Paper>
 
-        <Box mt={2} textAlign="center">
-          <Typography variant="body2" color="text.secondary">
-            First time?{' '}
-            <Link component={RouterLink} to="/setup" underline="hover" fontWeight={600}>
-              Set up your account
-            </Link>
-          </Typography>
-        </Box>
       </Container>
     </Box>
   );

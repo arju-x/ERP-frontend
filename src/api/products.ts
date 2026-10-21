@@ -6,13 +6,22 @@ interface PaginatedProducts {
   pagination: { total: number; page: number; pageSize: number; totalPages: number };
 }
 
+export interface GetProductsParams {
+  search?: string;
+  status?: string;
+  category?: string;
+  brand?: string;
+  unit?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  page?: number;
+  pageSize?: number;
+}
+
 export const productsApi = {
-  getProducts: async (params?: {
-    search?: string;
-    status?: string;
-    page?: number;
-    pageSize?: number;
-  }): Promise<PaginatedProducts> => {
+  getProducts: async (params?: GetProductsParams): Promise<PaginatedProducts> => {
     const res = await apiClient.get('/products', { params });
     return { data: res.data.data, pagination: res.data.pagination };
   },

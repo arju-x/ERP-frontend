@@ -9,11 +9,11 @@ import { AppSnackbarProvider } from './components/common/SnackbarProvider';
 
 import LoadingScreen from './components/common/LoadingScreen';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import GuestRoute from './components/common/GuestRoute';
 import RoleGuard from './components/common/RoleGuard';
 import AppShell from './components/layout/AppShell';
 
 import LoginPage from './pages/LoginPage';
-import SetupPage from './pages/SetupPage';
 import DashboardPage from './pages/DashboardPage';
 import ProductsPage from './pages/ProductsPage';
 import InventoryPage from './pages/InventoryPage';
@@ -57,9 +57,10 @@ function AppRoutes(): React.ReactElement {
 
   return (
     <Routes>
-      {/* Public routes */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/setup" element={<SetupPage />} />
+      {/* Guest-only routes — redirect authenticated users to /dashboard */}
+      <Route element={<GuestRoute />}>
+        <Route path="/login" element={<LoginPage />} />
+      </Route>
 
       {/* Protected routes — require authentication */}
       <Route element={<ProtectedRoute />}>

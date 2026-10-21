@@ -16,6 +16,7 @@ export const navItemDefs: NavItemDef[] = [
 
   { id: 'sales', label: 'Billing', path: '/sales', iconName: 'PointOfSale' },
   { id: 'sales-history', label: 'Sales History', path: '/sales/history', iconName: 'Receipt' },
+  { id: 'returns', label: 'Returns', path: '/returns', iconName: 'AssignmentReturn' },
 
   { id: 'reports', label: 'Reports', path: '/reports', iconName: 'BarChart' },
   {
