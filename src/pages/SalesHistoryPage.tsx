@@ -27,13 +27,18 @@ const DATE_FILTERS = [
   { label: 'Today',      value: 'today' },
   { label: 'This Week',  value: 'week' },
   { label: 'This Month', value: 'month' },
+  { label: 'Custom',     value: 'custom' },
 ];
 
-function getDateRange(filter: string) {
+function getDateRange(filter: string, customStart?: string, customEnd?: string) {
   const now = new Date();
   if (filter === 'today') return { startDate: new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString() };
   if (filter === 'week')  return { startDate: new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()).toISOString() };
   if (filter === 'month') return { startDate: new Date(now.getFullYear(), now.getMonth(), 1).toISOString() };
+  if (filter === 'custom' && customStart) return {
+    startDate: new Date(customStart).toISOString(),
+    ...(customEnd && { endDate: new Date(new Date(customEnd).setHours(23, 59, 59, 999)).toISOString() }),
+  };
   return {};
 }
 
@@ -71,17 +76,20 @@ export default function SalesHistoryPage() {
   const [page,         setPage]         = useState(0);
   const [rowsPerPage,  setRowsPerPage]  = useState(20);
   const [viewSale,     setViewSale]     = useState<Sale | null>(null);
+  const [customStart,  setCustomStart]  = useState('');
+  const [customEnd,    setCustomEnd]    = useState('');
 
   const fetchSales = useCallback(async () => {
+    if (dateFilter === 'custom' && (!customStart || !customEnd)) return;
     setLoading(true);
     try {
-      const range = getDateRange(dateFilter);
+      const range = getDateRange(dateFilter, customStart, customEnd);
       const res = await salesApi.getSales({ search: search || undefined, ...range, page: page + 1, pageSize: rowsPerPage });
       setSales(res.data);
       setTotal(res.pagination.total);
     } catch { enqueueSnackbar('Failed to load sales', { variant: 'error' }); }
     finally { setLoading(false); }
-  }, [search, dateFilter, page, rowsPerPage, enqueueSnackbar]);
+  }, [search, dateFilter, customStart, customEnd, page, rowsPerPage, enqueueSnackbar]);
 
   useEffect(() => { fetchSales(); }, [fetchSales]);
   useEffect(() => { const t = setTimeout(() => setPage(0), 350); return () => clearTimeout(t); }, [search]);
@@ -91,13 +99,13 @@ export default function SalesHistoryPage() {
       <PageHeader title="Sales History" subtitle="View and manage all past invoices" />
 
       {/* Filters */}
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mb={2.5} alignItems={{ sm: 'center' }}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mb={2.5} alignItems={{ sm: 'center' }} flexWrap="wrap">
         <TextField
           size="small" placeholder="Search invoice # or customer…" value={search}
           onChange={(e) => setSearch(e.target.value)} sx={{ minWidth: 270 }}
           InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
         />
-        <Stack direction="row" spacing={1}>
+        <Stack direction="row" spacing={1} flexWrap="wrap">
           {DATE_FILTERS.map((f) => (
             <Chip key={f.value} label={f.label} size="small" clickable
               color={dateFilter === f.value ? 'primary' : 'default'}
@@ -107,6 +115,19 @@ export default function SalesHistoryPage() {
             />
           ))}
         </Stack>
+
+        {/* Custom date pickers */}
+        {dateFilter === 'custom' && (
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <TextField size="small" type="date" label="From" value={customStart}
+              onChange={(e) => { setCustomStart(e.target.value); setPage(0); }}
+              InputLabelProps={{ shrink: true }} sx={{ width: 150 }} />
+            <TextField size="small" type="date" label="To" value={customEnd}
+              onChange={(e) => { setCustomEnd(e.target.value); setPage(0); }}
+              InputLabelProps={{ shrink: true }} sx={{ width: 150 }} />
+          </Stack>
+        )}
+
         {!loading && (
           <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto' }}>
             {total} invoice{total !== 1 ? 's' : ''}
