@@ -13,6 +13,7 @@ export interface Product {
   currentStock: number;
   minStockThreshold: number;
   status: ProductStatus;
+  hasSalesHistory?: boolean;
   description?: string;
   isDeleted: boolean;
   createdAt: string;
@@ -42,4 +43,4 @@ export interface CreateProductInput {
   description?: string;
 }
 
-export type UpdateProductInput = Partial<CreateProductInput>;
+export type UpdateProductInput = Partial<CreateProductInput> & { status?: 'active' | 'inactive' };

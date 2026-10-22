@@ -7,7 +7,8 @@ import {
 } from '@mui/material';
 import {
   Add as AddIcon, Search as SearchIcon, Edit as EditIcon,
-  Delete as DeleteIcon, Inventory2 as InventoryIcon, Close as CloseIcon,
+  Delete as DeleteIcon, ToggleOn as ToggleOnIcon, ToggleOff as ToggleOffIcon,
+  Inventory2 as InventoryIcon, Close as CloseIcon,
   Tune as TuneIcon,
 } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
@@ -45,14 +46,10 @@ function generateSKU(name: string) {
 const fmtCurrency = (n: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(n);
 
-function StockBadge({ stock, threshold }: { stock: number; threshold: number }) {
-  if (stock <= 0)        return <Chip label="Out of Stock" size="small" color="error"   sx={{ fontWeight: 600, minWidth: 90 }} />;
-  if (stock <= threshold) return <Chip label="Low Stock"   size="small" color="warning" sx={{ fontWeight: 600, minWidth: 90 }} />;
-  return                         <Chip label="In Stock"    size="small" color="success" sx={{ fontWeight: 600, minWidth: 90 }} />;
-}
-
 const STATUS_FILTERS = [
   { label: 'All',          value: '' },
+  { label: 'Active',      value: 'active' },
+  { label: 'Inactive',    value: 'inactive' },
   { label: 'Low Stock',    value: 'low_stock' },
   { label: 'Out of Stock', value: 'out_of_stock' },
 ];
@@ -227,6 +224,18 @@ export default function ProductsPage() {
     }
   }
 
+  async function handleToggleStatus(product: Product) {
+    const nextStatus = product.status === 'active' ? 'inactive' : 'active';
+    try {
+      await productsApi.updateProduct(product._id, { status: nextStatus });
+      enqueueSnackbar(`Product ${nextStatus === 'active' ? 'activated' : 'deactivated'}`, { variant: 'success' });
+      fetchProducts();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to update product status';
+      enqueueSnackbar(msg, { variant: 'error' });
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <Box>
@@ -351,7 +360,7 @@ export default function ProductsPage() {
           {statusFilter && (
             <Chip
               size="small"
-              label={`Status: ${statusFilter === 'low_stock' ? 'Low Stock' : statusFilter === 'out_of_stock' ? 'Out of Stock' : statusFilter === 'in_stock' ? 'In Stock' : statusFilter}`}
+              label={`Status: ${statusFilter === 'low_stock' ? 'Low Stock' : statusFilter === 'out_of_stock' ? 'Out of Stock' : statusFilter === 'in_stock' ? 'In Stock' : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}`}
               onDelete={() => { setStatusFilter(''); setPage(0); }}
               sx={{ borderRadius: 1.5 }}
             />
@@ -469,7 +478,7 @@ export default function ProductsPage() {
 
           {/* Stock Status */}
           <Box>
-            <FieldLabel>Stock Status</FieldLabel>
+            <FieldLabel>Product / Stock Status</FieldLabel>
             <TextField
               select
               fullWidth
@@ -478,6 +487,8 @@ export default function ProductsPage() {
               onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
             >
               <MenuItem value="">All Statuses</MenuItem>
+              <MenuItem value="active">Active</MenuItem>
+              <MenuItem value="inactive">Inactive</MenuItem>
               <MenuItem value="in_stock">In Stock</MenuItem>
               <MenuItem value="low_stock">Low Stock</MenuItem>
               <MenuItem value="out_of_stock">Out of Stock</MenuItem>
@@ -601,7 +612,7 @@ export default function ProductsPage() {
           <Table size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: 'primary.main' }}>
-                {['Product', 'SKU', 'Category', 'Unit', 'Cost', 'Price', 'Stock', 'Status', ''].map((h) => (
+                {['Product', 'SKU', 'Category', 'Unit', 'Cost', 'Price', 'Stock', 'Product Status', ''].map((h) => (
                   <TableCell key={h} sx={{ color: 'white', fontWeight: 700, whiteSpace: 'nowrap', py: 1.5, fontSize: 13 }}>
                     {h}
                   </TableCell>
@@ -667,7 +678,12 @@ export default function ProductsPage() {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <StockBadge stock={p.currentStock} threshold={p.minStockThreshold} />
+                      <Chip
+                        label={p.status === 'active' ? 'Active' : 'Inactive'}
+                        size="small"
+                        color={p.status === 'active' ? 'success' : 'default'}
+                        sx={{ fontWeight: 600, minWidth: 78 }}
+                      />
                     </TableCell>
                     <TableCell align="right">
                       <Stack direction="row" spacing={0.5} justifyContent="flex-end">
@@ -677,12 +693,28 @@ export default function ProductsPage() {
                             <EditIcon sx={{ fontSize: 16 }} />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="Delete">
-                          <IconButton size="small" onClick={() => setDeleteTarget(p)}
-                            sx={{ '&:hover': { bgcolor: 'error.light', color: 'error.main' } }}>
-                            <DeleteIcon sx={{ fontSize: 16 }} />
+                        <Tooltip title={p.status === 'active' ? 'Deactivate' : 'Activate'}>
+                          <IconButton size="small" onClick={() => handleToggleStatus(p)}
+                            sx={{
+                              color: p.status === 'active' ? 'success.main' : 'warning.main',
+                              '&:hover': {
+                                bgcolor: 'action.hover',
+                                color: p.status === 'active' ? 'success.dark' : 'warning.dark',
+                              },
+                            }}>
+                            {p.status === 'active'
+                              ? <ToggleOffIcon sx={{ fontSize: 20 }} />
+                              : <ToggleOnIcon sx={{ fontSize: 20 }} />}
                           </IconButton>
                         </Tooltip>
+                        {!p.hasSalesHistory && (
+                          <Tooltip title="Delete">
+                            <IconButton size="small" onClick={() => setDeleteTarget(p)}
+                              sx={{ '&:hover': { bgcolor: 'error.light', color: 'error.main' } }}>
+                              <DeleteIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                       </Stack>
                     </TableCell>
                   </TableRow>
