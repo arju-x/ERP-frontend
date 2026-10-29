@@ -21,18 +21,20 @@
     "@mui/x-data-grid": "7.4.0",
     "axios": "1.7.2",
     "notistack": "3.0.1",
+    "pdfmake": "^0.3.13",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-hook-form": "7.51.5",
     "react-router-dom": "6.23.1",
     "recharts": "2.12.7",
-    "zustand": "4.5.2",
-    "zod": "3.23.8"
+    "zod": "3.23.8",
+    "zustand": "4.5.2"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "6.4.6",
     "@testing-library/react": "16.0.0",
     "@testing-library/user-event": "14.5.2",
+    "@types/pdfmake": "^0.3.3",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
     "@vitejs/plugin-react": "4.3.0",
