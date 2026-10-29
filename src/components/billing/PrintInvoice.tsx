@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Button, Dialog, DialogContent, Stack } from '@mui/material';
-import { Print as PrintIcon, Close as CloseIcon } from '@mui/icons-material';
+import { Print as PrintIcon, Close as CloseIcon, AssignmentReturn as ReturnIcon } from '@mui/icons-material';
 import { Sale } from '../../types/sale.types';
 
 
@@ -8,12 +8,13 @@ interface PrintInvoiceProps {
   open: boolean;
   sale: Sale | null;
   onClose: () => void;
+  onReturn?: () => void;
 }
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 }).format(n);
 
-export default function PrintInvoice({ open, sale, onClose }: PrintInvoiceProps) {
+export default function PrintInvoice({ open, sale, onClose, onReturn }: PrintInvoiceProps) {
   if (!sale) return null;
 
   const shopName = import.meta.env.VITE_SHOP_NAME || import.meta.env.VITE_APP_NAME || 'My Shop';
@@ -56,6 +57,7 @@ export default function PrintInvoice({ open, sale, onClose }: PrintInvoiceProps)
       <DialogContent sx={{ p: 0, overflowX: 'hidden' }}>
         <Stack className="receipt-toolbar" direction="row" justifyContent="flex-end" spacing={1} sx={{ p: 1.25 }}>
           <Button startIcon={<PrintIcon />} variant="contained" size="small" onClick={handlePrint}>Print</Button>
+          {onReturn && <Button startIcon={<ReturnIcon />} size="small" onClick={onReturn}>Return Items</Button>}
           <Button startIcon={<CloseIcon />} size="small" onClick={onClose}>Close</Button>
         </Stack>
 

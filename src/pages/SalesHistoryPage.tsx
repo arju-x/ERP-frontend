@@ -2,27 +2,24 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, TextField, InputAdornment, Stack, Chip, IconButton, Tooltip,
-  Dialog, DialogContent, Button, Typography, Divider, Paper,
+  Typography, Paper,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TablePagination, CircularProgress, alpha,
 } from '@mui/material';
 import {
   Search as SearchIcon, Visibility as ViewIcon,
-  Print as PrintIcon, Receipt as ReceiptIcon,
-  Close as CloseIcon, CalendarToday,
+  Receipt as ReceiptIcon, CalendarToday,
   AssignmentReturn as ReturnIcon,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { useSnackbar } from 'notistack';
 import PageHeader from '../components/common/PageHeader';
+import PrintInvoice from '../components/billing/PrintInvoice';
 import { salesApi } from '../api/sales';
 import { Sale } from '../types/sale.types';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 }).format(n);
-
-const fmtDate = (d: string) =>
-  new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 const DATE_FILTERS = [
   { label: 'All',        value: 'all' },
@@ -284,146 +281,17 @@ export default function SalesHistoryPage() {
       </Paper>
 
       {/* ── Invoice View Dialog ─────────────────────────────────────────────── */}
-      <Dialog open={!!viewSale} onClose={() => setViewSale(null)} maxWidth="sm" fullWidth
-        PaperProps={{ sx: { borderRadius: 3 } }}>
-        {viewSale && (
-          <>
-            {/* Top action bar */}
-            <Box sx={{ px: 3, py: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-              <Button variant="contained" size="small" startIcon={<PrintIcon />} onClick={() => window.print()}>
-                Print
-              </Button>
-              <Button variant="outlined" size="small" startIcon={<CloseIcon />} onClick={() => setViewSale(null)}>
-                Close
-              </Button>
-            </Box>
-
-            <DialogContent sx={{ px: 4, py: 3 }}>
-              {/* Shop name header */}
-              <Box textAlign="center" mb={2.5}>
-                <Typography variant="h5" fontWeight={800}>
-                  {import.meta.env.VITE_APP_NAME || import.meta.env.VITE_SHOP_NAME || 'My Shop'}
-                </Typography>
-                {import.meta.env.VITE_SHOP_ADDRESS && (
-                  <Typography variant="body2" color="text.secondary">{import.meta.env.VITE_SHOP_ADDRESS}</Typography>
-                )}
-                {import.meta.env.VITE_SHOP_PHONE && (
-                  <Typography variant="body2" color="text.secondary">Tel: {import.meta.env.VITE_SHOP_PHONE}</Typography>
-                )}
-                <Typography variant="body2" color="text.secondary" mt={0.5}>Tax Invoice</Typography>
-              </Box>
-
-              <Divider sx={{ mb: 2 }} />
-
-              {/* Invoice meta — 2 columns */}
-              <Stack direction="row" justifyContent="space-between" mb={2.5}>
-                <Box>
-                  <Typography variant="body2">
-                    <Box component="span" fontWeight={700}>Invoice #:</Box>{' '}{viewSale.invoiceNumber}
-                  </Typography>
-                  <Typography variant="body2">
-                    <Box component="span" fontWeight={700}>Date:</Box>{' '}{fmtDate(viewSale.invoiceDate)}
-                  </Typography>
-                </Box>
-                <Box textAlign="right">
-                  <Typography variant="body2">
-                    <Box component="span" fontWeight={700}>Customer:</Box>{' '}{viewSale.customerName}
-                  </Typography>
-                  <Typography variant="body2">
-                    <Box component="span" fontWeight={700}>Payment:</Box>{' '}{viewSale.paymentMethod.replace('_', ' ').toUpperCase()}
-                  </Typography>
-                </Box>
-              </Stack>
-
-              {/* Items table */}
-              <Table size="small" sx={{ mb: 3 }}>
-                <TableHead>
-                  <TableRow sx={{ borderBottom: '2px solid', borderColor: 'divider' }}>
-                    {['#', 'Product', 'Qty', 'Rate', 'Disc. Amt', 'Total'].map((h) => (
-                      <TableCell key={h} align={h === '#' || h === 'Product' ? 'left' : 'right'}
-                        sx={{ fontWeight: 700, fontSize: 13, pb: 1, px: h === '#' ? 0 : undefined }}>
-                        {h}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {viewSale.items.map((item, idx) => (
-                    <TableRow key={idx} sx={{ '& td': { borderBottom: '1px dashed', borderColor: 'divider', py: 1.2 } }}>
-                      <TableCell sx={{ px: 0, color: 'text.secondary', fontSize: 13 }}>{idx + 1}</TableCell>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight={600}>{item.productName}</Typography>
-                        <Typography variant="caption" color="text.secondary">{item.sku} · {item.unit}</Typography>
-                      </TableCell>
-                      <TableCell align="right"><Typography variant="body2">{item.quantity}</Typography></TableCell>
-                      <TableCell align="right"><Typography variant="body2">{fmt(item.unitPrice)}</Typography></TableCell>
-                      <TableCell align="right">
-                        {item.discountAmount > 0
-                          ? <Typography variant="body2">{fmt(item.discountAmount)}</Typography>
-                          : <Typography variant="body2" color="text.disabled">—</Typography>}
-                      </TableCell>
-                      <TableCell align="right"><Typography variant="body2" fontWeight={700}>{fmt(item.lineTotal)}</Typography></TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              {/* Totals — right aligned */}
-              <Stack alignItems="flex-end" spacing={0.6}>
-                <Stack direction="row" spacing={6} justifyContent="flex-end">
-                  <Typography variant="body2" color="text.secondary">Subtotal</Typography>
-                  <Typography variant="body2" sx={{ minWidth: 90, textAlign: 'right' }}>{fmt(viewSale.subtotal)}</Typography>
-                </Stack>
-                {viewSale.discountTotal > 0 && (
-                  <Stack direction="row" spacing={6} justifyContent="flex-end">
-                    <Typography variant="body2" color="success.main">Discount</Typography>
-                    <Typography variant="body2" color="success.main" sx={{ minWidth: 90, textAlign: 'right' }}>− {fmt(viewSale.discountTotal)}</Typography>
-                  </Stack>
-                )}
-                <Divider sx={{ width: 260 }} />
-                <Stack direction="row" spacing={6} justifyContent="flex-end">
-                  <Typography variant="body1" fontWeight={700}>Grand Total</Typography>
-                  <Typography variant="body1" fontWeight={700} sx={{ minWidth: 90, textAlign: 'right' }}>{fmt(viewSale.grandTotal)}</Typography>
-                </Stack>
-                <Stack direction="row" spacing={6} justifyContent="flex-end">
-                  <Typography variant="body2" color="text.secondary">Amount Paid</Typography>
-                  <Typography variant="body2" sx={{ minWidth: 90, textAlign: 'right' }}>{fmt(viewSale.paidAmount)}</Typography>
-                </Stack>
-              </Stack>
-
-              {viewSale.notes && (
-                <Box mt={2} p={1.5} sx={{ bgcolor: 'grey.50', borderRadius: 1, border: 1, borderColor: 'divider' }}>
-                  <Typography variant="caption" color="text.secondary">Note: {viewSale.notes}</Typography>
-                </Box>
-              )}
-
-              {/* Thank you footer */}
-              <Box textAlign="center" mt={3}>
-                <Typography variant="body2" color="primary.main" fontWeight={600}>
-                  Thank you for your business!
-                </Typography>
-              </Box>
-            </DialogContent>
-
-            {/* Return Items action */}
-            <Box sx={{ px: 3, py: 1.5, borderTop: 1, borderColor: 'divider', bgcolor: 'grey.50', display: 'flex', justifyContent: 'flex-end' }}>
-              <Button
-                size="small"
-                variant="outlined"
-                color="secondary"
-                startIcon={<ReturnIcon />}
-                onClick={() => {
-                  const inv = viewSale.invoiceNumber;
-                  setViewSale(null);
-                  navigate(`/returns?invoiceId=${inv}`);
-                }}
-              >
-                Return Items
-              </Button>
-            </Box>
-          </>
-        )}
-      </Dialog>
+      <PrintInvoice
+        open={!!viewSale}
+        sale={viewSale}
+        onClose={() => setViewSale(null)}
+        onReturn={() => {
+          if (!viewSale) return;
+          const inv = viewSale.invoiceNumber;
+          setViewSale(null);
+          navigate(`/returns?invoiceId=${inv}`);
+        }}
+      />
     </Box>
   );
 }
