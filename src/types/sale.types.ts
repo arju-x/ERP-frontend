@@ -55,6 +55,8 @@ export interface Sale {
   paymentStatus: PaymentStatus;
   paymentMethod: PaymentMethod;
   status: SaleStatus;
+  cancellationReason?: string;
+  cancelledAt?: string;
   notes?: string;
   createdAt: string;
 }

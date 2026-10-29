@@ -2,14 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, TextField, InputAdornment, Stack, Chip, IconButton, Tooltip,
-  Typography, Paper,
+  Typography, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Button,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TablePagination, CircularProgress, alpha,
+  TablePagination, CircularProgress,
 } from '@mui/material';
 import {
-  Search as SearchIcon, Visibility as ViewIcon,
-  Receipt as ReceiptIcon, CalendarToday,
-  AssignmentReturn as ReturnIcon,
+  Search as SearchIcon, Visibility as ViewIcon, Receipt as ReceiptIcon, CalendarToday,
+  WarningAmber as WarningIcon, Block as CancelBillIcon,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { useSnackbar } from 'notistack';
@@ -41,7 +40,10 @@ function getDateRange(filter: string, customStart?: string, customEnd?: string) 
   return {};
 }
 
-function PaymentBadge({ status }: { status: string }) {
+function PaymentBadge({ status, saleStatus }: { status: string; saleStatus: Sale['status'] }) {
+  if (saleStatus === 'cancelled') {
+    return <Chip label="Cancelled" size="small" color="error" sx={{ fontWeight: 700, minWidth: 72 }} />;
+  }
   const map: Record<string, { label: string; color: 'success' | 'warning' | 'error' }> = {
     paid:    { label: 'Paid',    color: 'success' },
     partial: { label: 'Partial', color: 'warning' },
@@ -76,6 +78,8 @@ export default function SalesHistoryPage() {
   const [page,         setPage]         = useState(0);
   const [rowsPerPage,  setRowsPerPage]  = useState(20);
   const [viewSale,     setViewSale]     = useState<Sale | null>(null);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [customStart,  setCustomStart]  = useState('');
   const [customEnd,    setCustomEnd]    = useState('');
 
@@ -93,6 +97,24 @@ export default function SalesHistoryPage() {
 
   useEffect(() => { fetchSales(); }, [fetchSales]);
   useEffect(() => { const t = setTimeout(() => setPage(0), 350); return () => clearTimeout(t); }, [search]);
+
+  const handleCancelBill = async () => {
+    if (!viewSale || viewSale.status !== 'confirmed' || cancelling) return;
+    setCancelling(true);
+    try {
+      const cancelled = await salesApi.cancelSale(viewSale._id);
+      setViewSale(cancelled);
+      setCancelConfirmOpen(false);
+      enqueueSnackbar('Bill cancelled and stock restored', { variant: 'success' });
+      await fetchSales();
+    } catch (error) {
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message
+        || 'Could not cancel bill';
+      enqueueSnackbar(message, { variant: 'error' });
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   return (
     <Box>
@@ -174,13 +196,13 @@ export default function SalesHistoryPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
                     <CircularProgress size={32} />
                   </TableCell>
                 </TableRow>
               ) : sales.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
                     <Stack alignItems="center" spacing={1}>
                       <ReceiptIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
                       <Typography color="text.secondary" variant="body2">
@@ -225,7 +247,7 @@ export default function SalesHistoryPage() {
                       </Typography>
                     </TableCell>
                     <TableCell align="center" sx={{ px: 1 }}>
-                      <PaymentBadge status={s.paymentStatus} />
+                      <PaymentBadge status={s.paymentStatus} saleStatus={s.status} />
                     </TableCell>
                     <TableCell sx={{ px: 1.5 }}>
                       <Typography variant="body2" fontWeight={600} noWrap sx={{ fontSize: 12 }}>
@@ -244,26 +266,16 @@ export default function SalesHistoryPage() {
                       </Typography>
                     </TableCell>
                     <TableCell align="right" sx={{ px: 1 }} onClick={(e) => e.stopPropagation()}>
-                      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                        <Tooltip title="View Invoice">
-                          <IconButton
-                            size="small"
-                            onClick={() => setViewSale(s)}
-                            sx={{ '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main' } }}
-                          >
-                            <ViewIcon sx={{ fontSize: 16 }} />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Process Return">
-                          <IconButton
-                            size="small"
-                            onClick={() => navigate(`/returns?invoiceId=${s.invoiceNumber}`)}
-                            sx={{ '&:hover': { bgcolor: alpha(theme.palette.secondary.main, 0.1), color: 'secondary.main' } }}
-                          >
-                            <ReturnIcon sx={{ fontSize: 16 }} />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
+                      <Tooltip title="View Invoice">
+                        <IconButton
+                          size="small"
+                          aria-label={`View invoice ${s.invoiceNumber}`}
+                          onClick={() => setViewSale(s)}
+                          sx={{ '&:hover': { color: 'primary.main', bgcolor: 'action.hover' } }}
+                        >
+                          <ViewIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))
@@ -281,6 +293,44 @@ export default function SalesHistoryPage() {
       </Paper>
 
       {/* ── Invoice View Dialog ─────────────────────────────────────────────── */}
+      <Dialog
+        open={cancelConfirmOpen}
+        onClose={() => !cancelling && setCancelConfirmOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 1 }}>
+          <Box sx={{ width: 42, height: 42, borderRadius: 2, bgcolor: 'error.light', color: 'error.dark', display: 'grid', placeItems: 'center' }}>
+            <WarningIcon />
+          </Box>
+          <Box>
+            <Typography variant="h6" fontWeight={750}>Cancel this bill?</Typography>
+            <Typography variant="body2" color="text.secondary">This action will update your stock.</Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, bgcolor: 'action.hover' }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
+              <Box>
+                <Typography variant="caption" color="text.secondary">INVOICE</Typography>
+                <Typography fontWeight={700}>{viewSale?.invoiceNumber}</Typography>
+              </Box>
+              <Typography fontWeight={750}>{viewSale ? fmt(viewSale.grandTotal) : ''}</Typography>
+            </Stack>
+          </Paper>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2, lineHeight: 1.6 }}>
+            Cancelling returns the sold quantities to inventory and marks this invoice as cancelled. You can still view or print it from Sales History.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 2.5, pb: 2, gap: 1 }}>
+          <Button disabled={cancelling} onClick={() => setCancelConfirmOpen(false)} variant="outlined" color="inherit">Keep Bill</Button>
+          <Button disabled={cancelling} onClick={handleCancelBill} variant="contained" color="error" startIcon={<CancelBillIcon />}>
+            {cancelling ? 'Cancelling…' : 'Cancel Bill'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <PrintInvoice
         open={!!viewSale}
         sale={viewSale}
@@ -291,6 +341,7 @@ export default function SalesHistoryPage() {
           setViewSale(null);
           navigate(`/returns?invoiceId=${inv}`);
         }}
+        onCancel={() => setCancelConfirmOpen(true)}
       />
     </Box>
   );

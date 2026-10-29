@@ -28,6 +28,11 @@ export const salesApi = {
     return res.data.data;
   },
 
+  cancelSale: async (id: string): Promise<Sale> => {
+    const res = await apiClient.post(`/sales/${id}/cancel`);
+    return res.data.data;
+  },
+
   getDashboardStats: async (): Promise<{ stats: DashboardStats; recentSales: Sale[] }> => {
     const res = await apiClient.get('/dashboard/stats');
     return res.data.data;

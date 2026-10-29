@@ -1,6 +1,6 @@
 import React from 'react';
-import { Box, Button, Dialog, DialogContent, Stack } from '@mui/material';
-import { Print as PrintIcon, Close as CloseIcon, AssignmentReturn as ReturnIcon } from '@mui/icons-material';
+import { Box, Button, Dialog, DialogContent, IconButton, Stack, Tooltip } from '@mui/material';
+import { Print as PrintIcon, Close as CloseIcon, AssignmentReturn as ReturnIcon, Block as CancelIcon } from '@mui/icons-material';
 import { Sale } from '../../types/sale.types';
 
 
@@ -9,12 +9,13 @@ interface PrintInvoiceProps {
   sale: Sale | null;
   onClose: () => void;
   onReturn?: () => void;
+  onCancel?: () => void;
 }
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 }).format(n);
 
-export default function PrintInvoice({ open, sale, onClose, onReturn }: PrintInvoiceProps) {
+export default function PrintInvoice({ open, sale, onClose, onReturn, onCancel }: PrintInvoiceProps) {
   if (!sale) return null;
 
   const shopName = import.meta.env.VITE_SHOP_NAME || import.meta.env.VITE_APP_NAME || 'My Shop';
@@ -52,16 +53,17 @@ export default function PrintInvoice({ open, sale, onClose, onReturn }: PrintInv
       open={open}
       onClose={onClose}
       maxWidth={false}
-      PaperProps={{ sx: { width: '80mm', maxWidth: 'calc(100vw - 24px)', m: 1 } }}
+      PaperProps={{ sx: { width: '80mm', maxWidth: 'calc(100vw - 40px)', m: 1, position: 'relative', overflow: 'visible' } }}
     >
       <DialogContent sx={{ p: 0, overflowX: 'hidden' }}>
         <Stack className="receipt-toolbar" direction="row" justifyContent="flex-end" spacing={1} sx={{ p: 1.25 }}>
           <Button startIcon={<PrintIcon />} variant="contained" size="small" onClick={handlePrint}>Print</Button>
-          {onReturn && <Button startIcon={<ReturnIcon />} size="small" onClick={onReturn}>Return Items</Button>}
-          <Button startIcon={<CloseIcon />} size="small" onClick={onClose}>Close</Button>
+          {onReturn && sale.status === 'confirmed' && <Button startIcon={<ReturnIcon />} size="small" onClick={onReturn}>Return Items</Button>}
+          {onCancel && sale.status === 'confirmed' && <Button startIcon={<CancelIcon />} color="error" size="small" onClick={onCancel}>Cancel Bill</Button>}
         </Stack>
 
         <Box id="invoice-print-area" className="thermal-receipt">
+          {sale.status === 'cancelled' && <div style={{ color: '#c62828', textAlign: 'center', fontWeight: 700, marginBottom: 8 }}>CANCELLED BILL</div>}
           <header className="receipt-header">
             <h1>{shopName}</h1>
             {shopAddress && <div>{shopAddress}</div>}
@@ -119,6 +121,31 @@ export default function PrintInvoice({ open, sale, onClose, onReturn }: PrintInv
           <footer className="receipt-footer">Thank You for Shopping!</footer>
         </Box>
       </DialogContent>
+
+      <Tooltip title="Close invoice">
+        <IconButton
+          aria-label="Close invoice"
+          size="small"
+          onClick={onClose}
+          sx={{
+            position: 'absolute',
+            top: -12,
+            right: -12,
+            zIndex: 1,
+            width: 28,
+            height: 28,
+            p: 0.25,
+            border: 1,
+            borderColor: 'grey.400',
+            borderRadius: '50%',
+            bgcolor: 'grey.200',
+            color: 'grey.800',
+            '&:hover': { bgcolor: 'grey.300' },
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </Tooltip>
 
       <style>{`
         .thermal-receipt {
