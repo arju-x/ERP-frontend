@@ -8,7 +8,8 @@ export interface BillItem {
   sku: string;
   quantity: number;
   unitPrice: number;
-  discount: number;
+  maxUnitPrice: number;
+  discountAmount: number;
   lineTotal: number;
   unit: string;
   currentStock: number;

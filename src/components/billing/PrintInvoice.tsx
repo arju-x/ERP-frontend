@@ -86,7 +86,7 @@ export default function PrintInvoice({ open, sale, onClose }: PrintInvoiceProps)
                   <th style={{ textAlign: 'left', padding: '4px 2px' }}>Product</th>
                   <th style={{ textAlign: 'right', padding: '4px 2px' }}>Qty</th>
                   <th style={{ textAlign: 'right', padding: '4px 2px' }}>Rate</th>
-                  <th style={{ textAlign: 'right', padding: '4px 2px' }}>Disc%</th>
+                  <th style={{ textAlign: 'right', padding: '4px 2px' }}>Disc. Amt</th>
                   <th style={{ textAlign: 'right', padding: '4px 2px' }}>Total</th>
                 </tr>
               </thead>
@@ -101,7 +101,7 @@ export default function PrintInvoice({ open, sale, onClose }: PrintInvoiceProps)
                     </td>
                     <td style={{ textAlign: 'right', padding: '4px 2px' }}>{item.quantity}</td>
                     <td style={{ textAlign: 'right', padding: '4px 2px' }}>{fmt(item.unitPrice)}</td>
-                    <td style={{ textAlign: 'right', padding: '4px 2px' }}>{item.discount}%</td>
+                    <td style={{ textAlign: 'right', padding: '4px 2px' }}>{fmt(item.discountAmount)}</td>
                     <td style={{ textAlign: 'right', padding: '4px 2px', fontWeight: 600 }}>{fmt(item.lineTotal)}</td>
                   </tr>
                 ))}

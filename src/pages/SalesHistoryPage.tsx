@@ -339,7 +339,7 @@ export default function SalesHistoryPage() {
               <Table size="small" sx={{ mb: 3 }}>
                 <TableHead>
                   <TableRow sx={{ borderBottom: '2px solid', borderColor: 'divider' }}>
-                    {['#', 'Product', 'Qty', 'Rate', 'Disc%', 'Total'].map((h) => (
+                    {['#', 'Product', 'Qty', 'Rate', 'Disc. Amt', 'Total'].map((h) => (
                       <TableCell key={h} align={h === '#' || h === 'Product' ? 'left' : 'right'}
                         sx={{ fontWeight: 700, fontSize: 13, pb: 1, px: h === '#' ? 0 : undefined }}>
                         {h}
@@ -358,8 +358,8 @@ export default function SalesHistoryPage() {
                       <TableCell align="right"><Typography variant="body2">{item.quantity}</Typography></TableCell>
                       <TableCell align="right"><Typography variant="body2">{fmt(item.unitPrice)}</Typography></TableCell>
                       <TableCell align="right">
-                        {item.discount > 0
-                          ? <Typography variant="body2">{item.discount}%</Typography>
+                        {item.discountAmount > 0
+                          ? <Typography variant="body2">{fmt(item.discountAmount)}</Typography>
                           : <Typography variant="body2" color="text.disabled">—</Typography>}
                       </TableCell>
                       <TableCell align="right"><Typography variant="body2" fontWeight={700}>{fmt(item.lineTotal)}</Typography></TableCell>

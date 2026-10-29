@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   Box, Grid, Paper, Typography, TextField, InputAdornment,
   Button, Stack, IconButton, MenuItem, Divider, Tooltip,
@@ -43,6 +43,7 @@ export default function SalesPage() {
   const [customerPhone,  setCustomerPhone]  = useState('');
   const [paymentMethod,  setPaymentMethod]  = useState<PaymentMethod>('cash');
   const [amountPaid,     setAmountPaid]     = useState('');
+  const [amountPaidEdited, setAmountPaidEdited] = useState(false);
   const [notes,          setNotes]          = useState('');
   const [submitting,     setSubmitting]     = useState(false);
   const [printSale,      setPrintSale]      = useState<Sale | null>(null);
@@ -67,33 +68,59 @@ export default function SalesPage() {
     if (existing) {
       if (existing.quantity >= product.currentStock) { enqueueSnackbar(`Only ${product.currentStock} units available`, { variant: 'warning' }); return; }
       setCartItems((prev) => prev.map((i) => i.productId === product._id
-        ? { ...i, quantity: i.quantity + 1, lineTotal: calc(i.quantity + 1, i.unitPrice, i.discount) } : i));
+        ? { ...i, quantity: i.quantity + 1, lineTotal: calc(i.quantity + 1, i.unitPrice, i.discountAmount) } : i));
     } else {
-      setCartItems((prev) => [...prev, { productId: product._id, productName: product.name, sku: product.sku, quantity: 1, unitPrice: product.sellingPrice, discount: 0, lineTotal: product.sellingPrice, unit: product.unit, currentStock: product.currentStock }]);
+      setCartItems((prev) => [...prev, { productId: product._id, productName: product.name, sku: product.sku, quantity: 1, unitPrice: product.sellingPrice, maxUnitPrice: product.sellingPrice, discountAmount: 0, lineTotal: product.sellingPrice, unit: product.unit, currentStock: product.currentStock }]);
     }
     setSearchInput(''); setSearchResults([]);
   }
 
-  function calc(qty: number, price: number, disc: number) {
-    return parseFloat((qty * price * (1 - disc / 100)).toFixed(2));
+  function calc(qty: number, price: number, discountAmount: number) {
+    const lineSubtotal = qty * price;
+    const appliedDiscount = Math.min(Math.max(0, discountAmount), lineSubtotal);
+    return parseFloat((lineSubtotal - appliedDiscount).toFixed(2));
   }
   function updateQty(id: string, qty: number) {
-    setCartItems((p) => p.map((i) => i.productId === id ? { ...i, quantity: qty, lineTotal: calc(qty, i.unitPrice, i.discount) } : i));
+    setCartItems((p) => p.map((i) => {
+      if (i.productId !== id) return i;
+      const discountAmount = Math.min(i.discountAmount, qty * i.unitPrice);
+      return { ...i, quantity: qty, discountAmount, lineTotal: calc(qty, i.unitPrice, discountAmount) };
+    }));
   }
   function updatePrice(id: string, price: number) {
-    setCartItems((p) => p.map((i) => i.productId === id ? { ...i, unitPrice: price, lineTotal: calc(i.quantity, price, i.discount) } : i));
+    setCartItems((p) => p.map((i) => {
+      if (i.productId !== id) return i;
+      const unitPrice = Math.min(Math.max(0, price), i.maxUnitPrice);
+      const discountAmount = Math.min(i.discountAmount, i.quantity * unitPrice);
+      return { ...i, unitPrice, discountAmount, lineTotal: calc(i.quantity, unitPrice, discountAmount) };
+    }));
   }
-  function updateDiscount(id: string, disc: number) {
-    setCartItems((p) => p.map((i) => i.productId === id ? { ...i, discount: disc, lineTotal: calc(i.quantity, i.unitPrice, disc) } : i));
+  function updateDiscount(id: string, discountAmount: number) {
+    setCartItems((p) => p.map((i) => i.productId === id ? {
+      ...i,
+      discountAmount,
+      lineTotal: calc(i.quantity, i.unitPrice, discountAmount),
+    } : i));
   }
   function removeItem(id: string) { setCartItems((p) => p.filter((i) => i.productId !== id)); }
 
   // ── Totals ─────────────────────────────────────────────────────────────────
   const subtotal     = parseFloat(cartItems.reduce((s, i) => s + i.quantity * i.unitPrice, 0).toFixed(2));
-  const discountTotal= parseFloat(cartItems.reduce((s, i) => s + (i.quantity * i.unitPrice * i.discount) / 100, 0).toFixed(2));
+  const discountTotal= parseFloat(cartItems.reduce((s, i) => s + i.discountAmount, 0).toFixed(2));
   const grandTotal   = parseFloat((subtotal - discountTotal).toFixed(2));
-  const paid         = parseFloat(amountPaid) || 0;
+  const paid         = Math.min(Math.max(parseFloat(amountPaid) || 0, 0), grandTotal);
   const balanceDue   = parseFloat((grandTotal - paid).toFixed(2));
+
+  useEffect(() => {
+    if (!amountPaidEdited) {
+      setAmountPaid(String(grandTotal));
+      return;
+    }
+    const enteredAmount = Number(amountPaid);
+    if (amountPaid !== '' && Number.isFinite(enteredAmount) && enteredAmount > grandTotal) {
+      setAmountPaid(String(grandTotal));
+    }
+  }, [amountPaid, amountPaidEdited, grandTotal]);
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   async function handleCreateBill() {
@@ -103,12 +130,16 @@ export default function SalesPage() {
       const sale = await salesApi.createSale({
         customerName: customerName.trim() || 'Walk-in Customer',
         customerPhone: customerPhone.trim() || undefined,
-        items: cartItems.map((i) => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice, discount: i.discount })),
+        items: cartItems.map((i) => {
+          const lineSubtotal = i.quantity * i.unitPrice;
+          const discount = lineSubtotal > 0 ? (i.discountAmount / lineSubtotal) * 100 : 0;
+          return { productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice, discount };
+        }),
         paymentMethod, amountPaid: paid, notes: notes.trim() || undefined,
       });
       enqueueSnackbar(`Bill ${sale.invoiceNumber} created!`, { variant: 'success' });
       setPrintSale(sale);
-      setCartItems([]); setCustomerName(''); setCustomerPhone(''); setNotes(''); setAmountPaid('');
+      setCartItems([]); setCustomerName(''); setCustomerPhone(''); setNotes(''); setAmountPaidEdited(false);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to create bill';
       enqueueSnackbar(msg, { variant: 'error' });
@@ -202,7 +233,7 @@ export default function SalesPage() {
                         <th style={{ textAlign: 'left', padding: '10px 12px', fontWeight: 700, color: theme.palette.text.secondary, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Product</th>
                         <th style={{ textAlign: 'center', padding: '10px 8px', fontWeight: 700, color: theme.palette.text.secondary, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', width: 110 }}>Qty</th>
                         <th style={{ textAlign: 'right', padding: '10px 8px', fontWeight: 700, color: theme.palette.text.secondary, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', width: 100 }}>Rate</th>
-                        <th style={{ textAlign: 'right', padding: '10px 8px', fontWeight: 700, color: theme.palette.text.secondary, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', width: 72 }}>Disc%</th>
+                        <th style={{ textAlign: 'right', padding: '10px 8px', fontWeight: 700, color: theme.palette.text.secondary, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', width: 92 }}>Disc. Amt</th>
                         <th style={{ textAlign: 'right', padding: '10px 12px', fontWeight: 700, color: theme.palette.text.secondary, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', width: 110 }}>Total</th>
                         <th style={{ width: 36 }}></th>
                       </tr>
@@ -241,13 +272,16 @@ export default function SalesPage() {
                           </td>
                           <td style={{ padding: '8px' }}>
                             <TextField value={item.unitPrice} onChange={(e) => updatePrice(item.productId, parseFloat(e.target.value) || 0)}
+                              onBlur={(e) => updatePrice(item.productId, parseFloat(e.target.value) || 0)}
                               size="small" type="number"
-                              inputProps={{ min: 0, step: 0.01, style: { textAlign: 'right', padding: '4px 6px', width: 72, fontWeight: 600 } }} />
+                              inputProps={{ min: 0, max: item.maxUnitPrice, step: 0.01, style: { textAlign: 'right', padding: '4px 6px', width: 72, fontWeight: 600 } }} />
                           </td>
                           <td style={{ padding: '8px' }}>
-                            <TextField value={item.discount} onChange={(e) => updateDiscount(item.productId, Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))}
+                            <TextField value={item.discountAmount || ''} onChange={(e) => updateDiscount(item.productId, Math.min(item.quantity * item.unitPrice, Math.max(0, parseFloat(e.target.value) || 0)))}
+                              onBlur={(e) => updateDiscount(item.productId, Math.min(item.quantity * item.unitPrice, Math.max(0, parseFloat(e.target.value) || 0)))}
                               size="small" type="number"
-                              inputProps={{ min: 0, max: 100, style: { textAlign: 'right', padding: '4px 6px', width: 48 } }} />
+                              InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }}
+                              inputProps={{ min: 0, max: item.quantity * item.unitPrice, step: 0.01, style: { textAlign: 'right', padding: '4px 2px', width: 50 } }} />
                           </td>
                           <td style={{ textAlign: 'right', padding: '10px 12px' }}>
                             <Typography variant="body2" fontWeight={700} color="primary.main">{fmt(item.lineTotal)}</Typography>
@@ -361,8 +395,23 @@ export default function SalesPage() {
 
               {/* Amount paid */}
               <TextField label="Amount Paid (₹)" type="number" size="small" fullWidth
-                value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)}
-                inputProps={{ min: 0, step: 0.01 }} sx={{ mb: 1.5 }}
+                value={amountPaid} onChange={(e) => {
+                  const value = e.target.value;
+                  setAmountPaidEdited(true);
+                  if (value === '') {
+                    setAmountPaid('');
+                    return;
+                  }
+                  const numericValue = Number(value);
+                  if (Number.isFinite(numericValue)) {
+                    setAmountPaid(numericValue > grandTotal ? String(grandTotal) : value);
+                  }
+                }}
+                onBlur={(e) => {
+                  const numericValue = Number(e.target.value);
+                  setAmountPaid(String(Math.min(Math.max(Number.isFinite(numericValue) ? numericValue : 0, 0), grandTotal)));
+                }}
+                inputProps={{ min: 0, max: grandTotal, step: 0.01 }} sx={{ mb: 1.5 }}
                 InputProps={{
                   startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                   endAdornment: (
