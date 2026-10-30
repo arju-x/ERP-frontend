@@ -168,7 +168,7 @@ export default function SalesPage() {
             <Autocomplete freeSolo options={searchResults}
               getOptionLabel={(o) => (typeof o === 'string' ? o : `${o.name} (${o.sku})`)}
               inputValue={searchInput}
-              onInputChange={(_, v) => handleSearchChange(v)}
+              onInputChange={(_, v, reason) => { if (reason !== 'reset') handleSearchChange(v); }}
               onChange={(_, v) => { if (v && typeof v !== 'string') addToCart(v); }}
               loading={searching}
               renderOption={(props, option) => {
