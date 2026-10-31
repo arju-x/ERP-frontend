@@ -1,14 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import {
-  Box, Button, ButtonGroup, Dialog, DialogContent, IconButton,
-  MenuItem, MenuList, Paper, Popper, Grow, ClickAwayListener, Stack, Tooltip,
+  Box, Button, Dialog, DialogContent, IconButton, Stack, Tooltip,
 } from '@mui/material';
 import {
-  Print as PrintIcon,
   Close as CloseIcon,
   AssignmentReturn as ReturnIcon,
   Block as CancelIcon,
-  ArrowDropDown as ArrowDropDownIcon,
   PictureAsPdf as PdfIcon,
   Image as ImageIcon,
 } from '@mui/icons-material';
@@ -27,9 +24,7 @@ const fmt = (n: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 }).format(n);
 
 export default function PrintInvoice({ open, sale, onClose, onReturn, onCancel }: PrintInvoiceProps) {
-  const [menuOpen, setMenuOpen]   = useState(false);
-  const anchorRef                 = useRef<HTMLDivElement>(null);
-  const printAreaRef              = useRef<HTMLDivElement>(null);
+  const printAreaRef = useRef<HTMLDivElement>(null);
 
   if (!sale) return null;
 
@@ -41,7 +36,6 @@ export default function PrintInvoice({ open, sale, onClose, onReturn, onCancel }
 
   // ── Print as PDF ────────────────────────────────────────────────────────────
   const handlePrintPdf = () => {
-    setMenuOpen(false);
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       window.alert('Allow pop-ups for this site to print the receipt.');
@@ -61,7 +55,6 @@ export default function PrintInvoice({ open, sale, onClose, onReturn, onCancel }
 
   // ── Print as Image ──────────────────────────────────────────────────────────
   const handlePrintImage = async () => {
-    setMenuOpen(false);
     const el = printAreaRef.current;
     if (!el) return;
     try {
@@ -110,50 +103,12 @@ export default function PrintInvoice({ open, sale, onClose, onReturn, onCancel }
     >
       <DialogContent sx={{ p: 0, overflowX: 'hidden' }}>
         <Stack className="receipt-toolbar" direction="row" justifyContent="flex-end" spacing={1} sx={{ p: 1.25 }}>
-
-          {/* ── Split Print button ── */}
-          <ButtonGroup variant="contained" size="small" ref={anchorRef} disableElevation>
-            <Button startIcon={<PrintIcon />} onClick={handlePrintPdf}>
-              Print
-            </Button>
-            <Button
-              size="small"
-              onClick={() => setMenuOpen((prev) => !prev)}
-              aria-label="select print format"
-              sx={{ px: 0.5, minWidth: 28 }}
-            >
-              <ArrowDropDownIcon fontSize="small" />
-            </Button>
-          </ButtonGroup>
-
-          <Popper
-            open={menuOpen}
-            anchorEl={anchorRef.current}
-            placement="bottom-end"
-            transition
-            disablePortal
-            style={{ zIndex: 1400 }}
-          >
-            {({ TransitionProps }) => (
-              <Grow {...TransitionProps}>
-                <Paper elevation={4} sx={{ borderRadius: 1.5, mt: 0.5, minWidth: 170 }}>
-                  <ClickAwayListener onClickAway={() => setMenuOpen(false)}>
-                    <MenuList dense disablePadding sx={{ py: 0.5 }}>
-                      <MenuItem onClick={handlePrintPdf} sx={{ gap: 1.5, py: 1 }}>
-                        <PdfIcon fontSize="small" color="error" />
-                        Print as PDF
-                      </MenuItem>
-                      <MenuItem onClick={handlePrintImage} sx={{ gap: 1.5, py: 1 }}>
-                        <ImageIcon fontSize="small" color="primary" />
-                        Print as Image
-                      </MenuItem>
-                    </MenuList>
-                  </ClickAwayListener>
-                </Paper>
-              </Grow>
-            )}
-          </Popper>
-
+          <Button startIcon={<PdfIcon />} variant="contained" size="small" onClick={handlePrintPdf}>
+            Print as PDF
+          </Button>
+          <Button startIcon={<ImageIcon />} variant="outlined" size="small" onClick={handlePrintImage}>
+            Print as Image
+          </Button>
           {onReturn && sale.status === 'confirmed' && (
             <Button startIcon={<ReturnIcon />} size="small" onClick={onReturn}>Return Items</Button>
           )}
