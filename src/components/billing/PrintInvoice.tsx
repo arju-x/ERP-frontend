@@ -53,7 +53,7 @@ export default function PrintInvoice({ open, sale, onClose, onReturn, onCancel }
       });
   };
 
-  // ── Print as Image ──────────────────────────────────────────────────────────
+  // ── Download as Image ──────────────────────────────────────────────────────
   const handlePrintImage = async () => {
     const el = printAreaRef.current;
     if (!el) return;
@@ -65,32 +65,13 @@ export default function PrintInvoice({ open, sale, onClose, onReturn, onCancel }
         logging: false,
       });
       const imgData = canvas.toDataURL('image/png');
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) {
-        window.alert('Allow pop-ups for this site to print the receipt.');
-        return;
-      }
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>${sale.invoiceNumber}</title>
-            <style>
-              @page { margin: 0; size: 80mm auto; }
-              * { margin: 0; padding: 0; box-sizing: border-box; }
-              body { background: #fff; }
-              img { width: 80mm; display: block; }
-            </style>
-          </head>
-          <body>
-            <img src="${imgData}" onload="window.print(); window.close();" />
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
+      const link = document.createElement('a');
+      link.href = imgData;
+      link.download = `${sale.invoiceNumber}.png`;
+      link.click();
     } catch (err) {
-      console.error('Image print failed:', err);
-      window.alert('Could not print receipt as image.');
+      console.error('Image download failed:', err);
+      window.alert('Could not download receipt as image.');
     }
   };
 
@@ -107,7 +88,7 @@ export default function PrintInvoice({ open, sale, onClose, onReturn, onCancel }
             Print as PDF
           </Button>
           <Button startIcon={<ImageIcon />} variant="outlined" size="small" onClick={handlePrintImage}>
-            Print as Image
+            Download as Image
           </Button>
           {onReturn && sale.status === 'confirmed' && (
             <Button startIcon={<ReturnIcon />} size="small" onClick={onReturn}>Return Items</Button>
