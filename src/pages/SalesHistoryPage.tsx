@@ -192,7 +192,6 @@ export default function SalesHistoryPage() {
                 <TableCell sx={{ color: 'white', fontWeight: 700, py: 1.5, px: 1.5, fontSize: 12.5, width: { md: '11%' } }}>
                   DATE
                 </TableCell>
-                <TableCell align="right" sx={{ color: 'white', fontWeight: 700, py: 1.5, px: 1, width: { md: '5%' } }} />
               </TableRow>
             </TableHead>
             <TableBody>
@@ -266,18 +265,6 @@ export default function SalesHistoryPage() {
                           hour12: true,
                         })}
                       </Typography>
-                    </TableCell>
-                    <TableCell align="right" sx={{ px: 1 }} onClick={(e) => e.stopPropagation()}>
-                      <Tooltip title="View Invoice">
-                        <IconButton
-                          size="small"
-                          aria-label={`View invoice ${s.invoiceNumber}`}
-                          onClick={() => setViewSale(s)}
-                          sx={{ '&:hover': { color: 'primary.main', bgcolor: 'action.hover' } }}
-                        >
-                          <ViewIcon sx={{ fontSize: 18 }} />
-                        </IconButton>
-                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))
