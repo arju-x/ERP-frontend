@@ -60,9 +60,13 @@ export async function printReceiptPdf(
   }
 
   const content: Content[] = [
-    { text: shopName.toUpperCase(), alignment: 'center', bold: true, fontSize: 15, margin: [0, 0, 0, 2] },
+    { text: shopName.toUpperCase(), alignment: 'center', bold: true, fontSize: 12, margin: [0, 0, 0, 2] },
   ];
-  if (shopAddress) content.push({ text: shopAddress, alignment: 'center' });
+  if (shopAddress) {
+    shopAddress.split('\\n').forEach((line) => {
+      content.push({ text: line, alignment: 'center' });
+    });
+  }
   if (shopPhone) content.push({ text: `Tel: ${shopPhone}`, alignment: 'center' });
   content.push(makeRule());
   content.push({ text: [{ text: 'Bill No: ', bold: true }, sale.invoiceNumber] });

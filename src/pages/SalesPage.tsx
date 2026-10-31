@@ -14,6 +14,7 @@ import { useTheme } from '@mui/material/styles';
 import { useSnackbar } from 'notistack';
 import PageHeader from '../components/common/PageHeader';
 import PrintInvoice from '../components/billing/PrintInvoice';
+import SaleDetailDialog from '../components/billing/SaleDetailDialog';
 import { productsApi } from '../api/products';
 import { salesApi } from '../api/sales';
 import { ProductSearchResult } from '../types/product.types';
@@ -45,8 +46,10 @@ export default function SalesPage() {
   const [amountPaid,     setAmountPaid]     = useState('');
   const [amountPaidEdited, setAmountPaidEdited] = useState(false);
   const [notes,          setNotes]          = useState('');
+  const [commonDiscount, setCommonDiscount] = useState<string>('');
   const [submitting,     setSubmitting]     = useState(false);
   const [printSale,      setPrintSale]      = useState<Sale | null>(null);
+  const [showBill,       setShowBill]       = useState(false);
 
   // ── Search ─────────────────────────────────────────────────────────────────
   const handleSearchChange = useCallback((value: string) => {
@@ -105,9 +108,10 @@ export default function SalesPage() {
   function removeItem(id: string) { setCartItems((p) => p.filter((i) => i.productId !== id)); }
 
   // ── Totals ─────────────────────────────────────────────────────────────────
-  const subtotal     = parseFloat(cartItems.reduce((s, i) => s + i.quantity * i.unitPrice, 0).toFixed(2));
-  const discountTotal= parseFloat(cartItems.reduce((s, i) => s + i.discountAmount, 0).toFixed(2));
-  const grandTotal   = parseFloat((subtotal - discountTotal).toFixed(2));
+  const subtotal        = parseFloat(cartItems.reduce((s, i) => s + i.quantity * i.unitPrice, 0).toFixed(2));
+  const discountTotal   = parseFloat(cartItems.reduce((s, i) => s + i.discountAmount, 0).toFixed(2));
+  const commonDiscountAmt = parseFloat(Math.min(Math.max(parseFloat(commonDiscount) || 0, 0), Math.max(subtotal - discountTotal, 0)).toFixed(2));
+  const grandTotal      = parseFloat((subtotal - discountTotal - commonDiscountAmt).toFixed(2));
   const paid         = Math.min(Math.max(parseFloat(amountPaid) || 0, 0), grandTotal);
   const balanceDue   = parseFloat((grandTotal - paid).toFixed(2));
 
@@ -132,14 +136,17 @@ export default function SalesPage() {
         customerPhone: customerPhone.trim() || undefined,
         items: cartItems.map((i) => {
           const lineSubtotal = i.quantity * i.unitPrice;
-          const discount = lineSubtotal > 0 ? (i.discountAmount / lineSubtotal) * 100 : 0;
+          // Distribute common discount proportionally by line subtotal weight
+          const weight = subtotal > 0 ? lineSubtotal / subtotal : 0;
+          const totalLineDiscount = i.discountAmount + commonDiscountAmt * weight;
+          const discount = lineSubtotal > 0 ? (totalLineDiscount / lineSubtotal) * 100 : 0;
           return { productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice, discount };
         }),
         paymentMethod, amountPaid: paid, notes: notes.trim() || undefined,
       });
       enqueueSnackbar(`Bill ${sale.invoiceNumber} created!`, { variant: 'success' });
       setPrintSale(sale);
-      setCartItems([]); setCustomerName(''); setCustomerPhone(''); setNotes(''); setAmountPaidEdited(false);
+      setCartItems([]); setCustomerName(''); setCustomerPhone(''); setNotes(''); setCommonDiscount(''); setAmountPaidEdited(false);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to create bill';
       enqueueSnackbar(msg, { variant: 'error' });
@@ -163,7 +170,7 @@ export default function SalesPage() {
             <Autocomplete freeSolo options={searchResults}
               getOptionLabel={(o) => (typeof o === 'string' ? o : `${o.name} (${o.sku})`)}
               inputValue={searchInput}
-              onInputChange={(_, v) => handleSearchChange(v)}
+              onInputChange={(_, v, reason) => { if (reason !== 'reset') handleSearchChange(v); }}
               onChange={(_, v) => { if (v && typeof v !== 'string') addToCart(v); }}
               loading={searching}
               renderOption={(props, option) => {
@@ -302,20 +309,46 @@ export default function SalesPage() {
 
                 {/* Cart footer totals */}
                 <Box sx={{ px: 2.5, py: 1.5, bgcolor: alpha(theme.palette.primary.main, 0.04), borderTop: 1, borderColor: 'divider' }}>
-                  <Stack direction="row" justifyContent="flex-end" spacing={3}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1.5}>
+                    {/* Common discount input */}
                     <Stack direction="row" spacing={1} alignItems="center">
-                      <Typography variant="body2" color="text.secondary">Subtotal:</Typography>
-                      <Typography variant="body2" fontWeight={600}>{fmt(subtotal)}</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>Common Discount:</Typography>
+                      <TextField
+                        value={commonDiscount}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === '' || /^\d*\.?\d*$/.test(v)) setCommonDiscount(v);
+                        }}
+                        onBlur={(e) => {
+                          const v = parseFloat(e.target.value) || 0;
+                          const maxDiscount = Math.max(subtotal - discountTotal, 0);
+                          setCommonDiscount(v > 0 ? String(Math.min(v, maxDiscount)) : '');
+                        }}
+                        size="small"
+                        type="number"
+                        placeholder="0"
+                        InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }}
+                        inputProps={{ min: 0, max: Math.max(subtotal - discountTotal, 0), step: 0.01, style: { textAlign: 'right', padding: '4px 6px', width: 80 } }}
+                        sx={{ maxWidth: 140 }}
+                      />
                     </Stack>
-                    {discountTotal > 0 && (
+
+                    {/* Totals */}
+                    <Stack direction="row" spacing={3} alignItems="center">
                       <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography variant="body2" color="success.main">Discount:</Typography>
-                        <Typography variant="body2" fontWeight={600} color="success.main">-{fmt(discountTotal)}</Typography>
+                        <Typography variant="body2" color="text.secondary">Subtotal:</Typography>
+                        <Typography variant="body2" fontWeight={600}>{fmt(subtotal)}</Typography>
                       </Stack>
-                    )}
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Typography variant="body1" fontWeight={700}>Total:</Typography>
-                      <Typography variant="body1" fontWeight={700} color="primary.main">{fmt(grandTotal)}</Typography>
+                      {(discountTotal > 0 || commonDiscountAmt > 0) && (
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Typography variant="body2" color="success.main">Discount:</Typography>
+                          <Typography variant="body2" fontWeight={600} color="success.main">-{fmt(discountTotal + commonDiscountAmt)}</Typography>
+                        </Stack>
+                      )}
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant="body1" fontWeight={700}>Total:</Typography>
+                        <Typography variant="body1" fontWeight={700} color="primary.main">{fmt(grandTotal)}</Typography>
+                      </Stack>
                     </Stack>
                   </Stack>
                 </Box>
@@ -361,8 +394,14 @@ export default function SalesPage() {
                   </Stack>
                   {discountTotal > 0 && (
                     <Stack direction="row" justifyContent="space-between">
-                      <Typography variant="body2" color="success.main">Discount</Typography>
+                      <Typography variant="body2" color="success.main">Item Discounts</Typography>
                       <Typography variant="body2" fontWeight={600} color="success.main">− {fmt(discountTotal)}</Typography>
+                    </Stack>
+                  )}
+                  {commonDiscountAmt > 0 && (
+                    <Stack direction="row" justifyContent="space-between">
+                      <Typography variant="body2" color="success.main">Common Discount</Typography>
+                      <Typography variant="body2" fontWeight={600} color="success.main">− {fmt(commonDiscountAmt)}</Typography>
                     </Stack>
                   )}
                   <Divider />
@@ -459,7 +498,18 @@ export default function SalesPage() {
         </Grid>
       </Grid>
 
-      <PrintInvoice open={!!printSale} sale={printSale} onClose={() => setPrintSale(null)} />
+      <SaleDetailDialog
+        open={!!printSale}
+        sale={printSale}
+        onClose={() => setPrintSale(null)}
+        onShowBill={() => setShowBill(true)}
+      />
+
+      <PrintInvoice
+        open={showBill}
+        sale={printSale}
+        onClose={() => setShowBill(false)}
+      />
     </Box>
   );
 }

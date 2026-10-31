@@ -1,8 +1,16 @@
-import React from 'react';
-import { Box, Button, Dialog, DialogContent, IconButton, Stack, Tooltip } from '@mui/material';
-import { Print as PrintIcon, Close as CloseIcon, AssignmentReturn as ReturnIcon, Block as CancelIcon } from '@mui/icons-material';
+import React, { useRef } from 'react';
+import {
+  Box, Button, Dialog, DialogContent, IconButton, Stack, Tooltip,
+} from '@mui/material';
+import {
+  Close as CloseIcon,
+  AssignmentReturn as ReturnIcon,
+  Block as CancelIcon,
+  PictureAsPdf as PdfIcon,
+  Image as ImageIcon,
+} from '@mui/icons-material';
+import html2canvas from 'html2canvas';
 import { Sale } from '../../types/sale.types';
-
 
 interface PrintInvoiceProps {
   open: boolean;
@@ -16,31 +24,27 @@ const fmt = (n: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 }).format(n);
 
 export default function PrintInvoice({ open, sale, onClose, onReturn, onCancel }: PrintInvoiceProps) {
+  const printAreaRef = useRef<HTMLDivElement>(null);
+
   if (!sale) return null;
 
-  const shopName = import.meta.env.VITE_SHOP_NAME || import.meta.env.VITE_APP_NAME || 'My Shop';
-  const shopAddress = import.meta.env.VITE_SHOP_ADDRESS;
-  const shopPhone = import.meta.env.VITE_SHOP_PHONE;
-  const shopWorkingDays = import.meta.env.VITE_SHOP_WORKING_DAYS;
-  const shopWorkingHours = import.meta.env.VITE_SHOP_WORKING_HOURS;
+  const shopName        = import.meta.env.VITE_SHOP_NAME || import.meta.env.VITE_APP_NAME || 'My Shop';
+  const shopAddress     = import.meta.env.VITE_SHOP_ADDRESS as string | undefined;
+  const shopPhone       = import.meta.env.VITE_SHOP_PHONE as string | undefined;
+  const shopWorkingDays = import.meta.env.VITE_SHOP_WORKING_DAYS as string | undefined;
+  const shopWorkingHours= import.meta.env.VITE_SHOP_WORKING_HOURS as string | undefined;
 
-  const handlePrint = () => {
+  // ── Print as PDF ────────────────────────────────────────────────────────────
+  const handlePrintPdf = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       window.alert('Allow pop-ups for this site to print the receipt.');
       return;
     }
-
     void import('../../utils/receiptPdf')
-      .then(({ printReceiptPdf }) => printReceiptPdf(
-        sale,
-        shopName,
-        shopAddress,
-        shopPhone,
-        shopWorkingDays,
-        shopWorkingHours,
-        printWindow,
-      ))
+      .then(({ printReceiptPdf }) =>
+        printReceiptPdf(sale, shopName, shopAddress, shopPhone, shopWorkingDays, shopWorkingHours, printWindow)
+      )
       .catch((error: unknown) => {
         console.error('Receipt printing failed:', error);
         printWindow.close();
@@ -48,6 +52,29 @@ export default function PrintInvoice({ open, sale, onClose, onReturn, onCancel }
         window.alert(`Could not prepare the receipt for printing.${detail}`);
       });
   };
+
+  // ── Download as Image ──────────────────────────────────────────────────────
+  const handlePrintImage = async () => {
+    const el = printAreaRef.current;
+    if (!el) return;
+    try {
+      const canvas = await html2canvas(el, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = imgData;
+      link.download = `${sale.invoiceNumber}.png`;
+      link.click();
+    } catch (err) {
+      console.error('Image download failed:', err);
+      window.alert('Could not download receipt as image.');
+    }
+  };
+
   return (
     <Dialog
       open={open}
@@ -57,16 +84,33 @@ export default function PrintInvoice({ open, sale, onClose, onReturn, onCancel }
     >
       <DialogContent sx={{ p: 0, overflowX: 'hidden' }}>
         <Stack className="receipt-toolbar" direction="row" justifyContent="flex-end" spacing={1} sx={{ p: 1.25 }}>
-          <Button startIcon={<PrintIcon />} variant="contained" size="small" onClick={handlePrint}>Print</Button>
-          {onReturn && sale.status === 'confirmed' && <Button startIcon={<ReturnIcon />} size="small" onClick={onReturn}>Return Items</Button>}
-          {onCancel && sale.status === 'confirmed' && <Button startIcon={<CancelIcon />} color="error" size="small" onClick={onCancel}>Cancel Bill</Button>}
+          <Button startIcon={<PdfIcon />} variant="contained" size="small" onClick={handlePrintPdf}
+            sx={{ whiteSpace: 'nowrap', fontSize: 11 }}>
+            Print as PDF
+          </Button>
+          <Button startIcon={<ImageIcon />} variant="outlined" size="small" onClick={handlePrintImage}
+            sx={{ whiteSpace: 'nowrap', fontSize: 11 }}>
+            Download as Image
+          </Button>
+          {onReturn && sale.status === 'confirmed' && (
+            <Button startIcon={<ReturnIcon />} size="small" onClick={onReturn}>Return Items</Button>
+          )}
+          {onCancel && sale.status === 'confirmed' && (
+            <Button startIcon={<CancelIcon />} color="error" size="small" onClick={onCancel}>Cancel Bill</Button>
+          )}
         </Stack>
 
-        <Box id="invoice-print-area" className="thermal-receipt">
-          {sale.status === 'cancelled' && <div style={{ color: '#c62828', textAlign: 'center', fontWeight: 700, marginBottom: 8 }}>CANCELLED BILL</div>}
+        <Box ref={printAreaRef} id="invoice-print-area" className="thermal-receipt">
+          {sale.status === 'cancelled' && (
+            <div style={{ color: '#c62828', textAlign: 'center', fontWeight: 700, marginBottom: 8 }}>
+              CANCELLED BILL
+            </div>
+          )}
           <header className="receipt-header">
             <h1>{shopName}</h1>
-            {shopAddress && <div>{shopAddress}</div>}
+            {shopAddress && shopAddress.split('\\n').map((line: string, i: number) => (
+              <div key={i}>{line}</div>
+            ))}
             {shopPhone && <div>Tel: {shopPhone}</div>}
           </header>
 
@@ -157,7 +201,7 @@ export default function PrintInvoice({ open, sale, onClose, onReturn, onCancel }
           font: 10pt/1.3 Arial, sans-serif;
         }
         .receipt-header { text-align: center; }
-        .receipt-header h1 { margin: 0 0 1mm; font-size: 15pt; line-height: 1.15; font-weight: 800; text-transform: uppercase; }
+        .receipt-header h1 { margin: 0 0 1mm; font-size: 12pt; line-height: 1.15; font-weight: 800; text-transform: uppercase; white-space: nowrap; }
         .receipt-hours { margin-top: 3mm; padding-top: 2mm; border-top: 1px dashed #888; text-align: center; font-size: 8pt; line-height: 1.25; }
         .receipt-rule { margin: 2.5mm 0; border-top: 1px dashed #555; }
         .receipt-meta { display: grid; gap: 1mm; font-size: 9pt; overflow-wrap: anywhere; }

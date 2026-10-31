@@ -14,6 +14,7 @@ import { useTheme } from '@mui/material/styles';
 import { useSnackbar } from 'notistack';
 import PageHeader from '../components/common/PageHeader';
 import PrintInvoice from '../components/billing/PrintInvoice';
+import SaleDetailDialog from '../components/billing/SaleDetailDialog';
 import { salesApi } from '../api/sales';
 import { Sale } from '../types/sale.types';
 
@@ -78,7 +79,9 @@ export default function SalesHistoryPage() {
   const [page,         setPage]         = useState(0);
   const [rowsPerPage,  setRowsPerPage]  = useState(20);
   const [viewSale,     setViewSale]     = useState<Sale | null>(null);
+  const [showBill,     setShowBill]     = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
   const [customStart,  setCustomStart]  = useState('');
   const [customEnd,    setCustomEnd]    = useState('');
@@ -100,11 +103,13 @@ export default function SalesHistoryPage() {
 
   const handleCancelBill = async () => {
     if (!viewSale || viewSale.status !== 'confirmed' || cancelling) return;
+    if (!cancelReason.trim()) return;
     setCancelling(true);
     try {
-      const cancelled = await salesApi.cancelSale(viewSale._id);
+      const cancelled = await salesApi.cancelSale(viewSale._id, cancelReason.trim());
       setViewSale(cancelled);
       setCancelConfirmOpen(false);
+      setCancelReason('');
       enqueueSnackbar('Bill cancelled and stock restored', { variant: 'success' });
       await fetchSales();
     } catch (error) {
@@ -190,7 +195,6 @@ export default function SalesHistoryPage() {
                 <TableCell sx={{ color: 'white', fontWeight: 700, py: 1.5, px: 1.5, fontSize: 12.5, width: { md: '11%' } }}>
                   DATE
                 </TableCell>
-                <TableCell align="right" sx={{ color: 'white', fontWeight: 700, py: 1.5, px: 1, width: { md: '5%' } }} />
               </TableRow>
             </TableHead>
             <TableBody>
@@ -265,18 +269,6 @@ export default function SalesHistoryPage() {
                         })}
                       </Typography>
                     </TableCell>
-                    <TableCell align="right" sx={{ px: 1 }} onClick={(e) => e.stopPropagation()}>
-                      <Tooltip title="View Invoice">
-                        <IconButton
-                          size="small"
-                          aria-label={`View invoice ${s.invoiceNumber}`}
-                          onClick={() => setViewSale(s)}
-                          sx={{ '&:hover': { color: 'primary.main', bgcolor: 'action.hover' } }}
-                        >
-                          <ViewIcon sx={{ fontSize: 18 }} />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -295,7 +287,7 @@ export default function SalesHistoryPage() {
       {/* ── Invoice View Dialog ─────────────────────────────────────────────── */}
       <Dialog
         open={cancelConfirmOpen}
-        onClose={() => !cancelling && setCancelConfirmOpen(false)}
+        onClose={() => { if (!cancelling) { setCancelConfirmOpen(false); setCancelReason(''); } }}
         maxWidth="xs"
         fullWidth
         PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
@@ -322,19 +314,33 @@ export default function SalesHistoryPage() {
           <Typography variant="body2" color="text.secondary" sx={{ mt: 2, lineHeight: 1.6 }}>
             Cancelling returns the sold quantities to inventory and marks this invoice as cancelled. You can still view or print it from Sales History.
           </Typography>
+          <TextField
+            fullWidth
+            size="small"
+            label="Reason for cancellation"
+            placeholder="e.g. Customer requested cancellation"
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            required
+            error={cancelReason.trim() === ''}
+            helperText={cancelReason.trim() === '' ? 'Reason is required' : ''}
+            sx={{ mt: 2 }}
+            disabled={cancelling}
+          />
         </DialogContent>
         <DialogActions sx={{ px: 2.5, pb: 2, gap: 1 }}>
-          <Button disabled={cancelling} onClick={() => setCancelConfirmOpen(false)} variant="outlined" color="inherit">Keep Bill</Button>
-          <Button disabled={cancelling} onClick={handleCancelBill} variant="contained" color="error" startIcon={<CancelBillIcon />}>
+          <Button disabled={cancelling} onClick={() => { setCancelConfirmOpen(false); setCancelReason(''); }} variant="outlined" color="inherit">Keep Bill</Button>
+          <Button disabled={cancelling || !cancelReason.trim()} onClick={handleCancelBill} variant="contained" color="error" startIcon={<CancelBillIcon />}>
             {cancelling ? 'Cancelling…' : 'Cancel Bill'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <PrintInvoice
+      <SaleDetailDialog
         open={!!viewSale}
         sale={viewSale}
         onClose={() => setViewSale(null)}
+        onShowBill={() => setShowBill(true)}
         onReturn={() => {
           if (!viewSale) return;
           const inv = viewSale.invoiceNumber;
@@ -342,6 +348,12 @@ export default function SalesHistoryPage() {
           navigate(`/returns?invoiceId=${inv}`);
         }}
         onCancel={() => setCancelConfirmOpen(true)}
+      />
+
+      <PrintInvoice
+        open={showBill}
+        sale={viewSale}
+        onClose={() => setShowBill(false)}
       />
     </Box>
   );
