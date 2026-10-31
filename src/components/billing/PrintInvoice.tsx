@@ -66,7 +66,9 @@ export default function PrintInvoice({ open, sale, onClose, onReturn, onCancel }
           {sale.status === 'cancelled' && <div style={{ color: '#c62828', textAlign: 'center', fontWeight: 700, marginBottom: 8 }}>CANCELLED BILL</div>}
           <header className="receipt-header">
             <h1>{shopName}</h1>
-            {shopAddress && <div>{shopAddress}</div>}
+            {shopAddress && shopAddress.split('\\n').map((line: string, i: number) => (
+              <div key={i}>{line}</div>
+            ))}
             {shopPhone && <div>Tel: {shopPhone}</div>}
           </header>
 
