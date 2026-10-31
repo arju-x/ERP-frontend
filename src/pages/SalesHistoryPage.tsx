@@ -14,6 +14,7 @@ import { useTheme } from '@mui/material/styles';
 import { useSnackbar } from 'notistack';
 import PageHeader from '../components/common/PageHeader';
 import PrintInvoice from '../components/billing/PrintInvoice';
+import SaleDetailDialog from '../components/billing/SaleDetailDialog';
 import { salesApi } from '../api/sales';
 import { Sale } from '../types/sale.types';
 
@@ -78,6 +79,7 @@ export default function SalesHistoryPage() {
   const [page,         setPage]         = useState(0);
   const [rowsPerPage,  setRowsPerPage]  = useState(20);
   const [viewSale,     setViewSale]     = useState<Sale | null>(null);
+  const [showBill,     setShowBill]     = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [customStart,  setCustomStart]  = useState('');
@@ -331,10 +333,11 @@ export default function SalesHistoryPage() {
         </DialogActions>
       </Dialog>
 
-      <PrintInvoice
+      <SaleDetailDialog
         open={!!viewSale}
         sale={viewSale}
         onClose={() => setViewSale(null)}
+        onShowBill={() => setShowBill(true)}
         onReturn={() => {
           if (!viewSale) return;
           const inv = viewSale.invoiceNumber;
@@ -342,6 +345,12 @@ export default function SalesHistoryPage() {
           navigate(`/returns?invoiceId=${inv}`);
         }}
         onCancel={() => setCancelConfirmOpen(true)}
+      />
+
+      <PrintInvoice
+        open={showBill}
+        sale={viewSale}
+        onClose={() => setShowBill(false)}
       />
     </Box>
   );

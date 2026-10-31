@@ -14,6 +14,7 @@ import { useTheme } from '@mui/material/styles';
 import { useSnackbar } from 'notistack';
 import PageHeader from '../components/common/PageHeader';
 import PrintInvoice from '../components/billing/PrintInvoice';
+import SaleDetailDialog from '../components/billing/SaleDetailDialog';
 import { productsApi } from '../api/products';
 import { salesApi } from '../api/sales';
 import { ProductSearchResult } from '../types/product.types';
@@ -48,6 +49,7 @@ export default function SalesPage() {
   const [commonDiscount, setCommonDiscount] = useState<string>('');
   const [submitting,     setSubmitting]     = useState(false);
   const [printSale,      setPrintSale]      = useState<Sale | null>(null);
+  const [showBill,       setShowBill]       = useState(false);
 
   // ── Search ─────────────────────────────────────────────────────────────────
   const handleSearchChange = useCallback((value: string) => {
@@ -496,7 +498,18 @@ export default function SalesPage() {
         </Grid>
       </Grid>
 
-      <PrintInvoice open={!!printSale} sale={printSale} onClose={() => setPrintSale(null)} />
+      <SaleDetailDialog
+        open={!!printSale}
+        sale={printSale}
+        onClose={() => setPrintSale(null)}
+        onShowBill={() => setShowBill(true)}
+      />
+
+      <PrintInvoice
+        open={showBill}
+        sale={printSale}
+        onClose={() => setShowBill(false)}
+      />
     </Box>
   );
 }
