@@ -84,10 +84,12 @@ export default function PrintInvoice({ open, sale, onClose, onReturn, onCancel }
     >
       <DialogContent sx={{ p: 0, overflowX: 'hidden' }}>
         <Stack className="receipt-toolbar" direction="row" justifyContent="flex-end" spacing={1} sx={{ p: 1.25 }}>
-          <Button startIcon={<PdfIcon />} variant="contained" size="small" onClick={handlePrintPdf}>
+          <Button startIcon={<PdfIcon />} variant="contained" size="small" onClick={handlePrintPdf}
+            sx={{ whiteSpace: 'nowrap', fontSize: 11 }}>
             Print as PDF
           </Button>
-          <Button startIcon={<ImageIcon />} variant="outlined" size="small" onClick={handlePrintImage}>
+          <Button startIcon={<ImageIcon />} variant="outlined" size="small" onClick={handlePrintImage}
+            sx={{ whiteSpace: 'nowrap', fontSize: 11 }}>
             Download as Image
           </Button>
           {onReturn && sale.status === 'confirmed' && (
