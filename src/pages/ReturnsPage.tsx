@@ -479,50 +479,30 @@ export default function ReturnsPage() {
       </Grid>
 
       {/* Filter and Search Bar */}
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mb={2.5} alignItems={{ sm: 'center' }} justifyContent="space-between">
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }} flexWrap="wrap">
-          <TextField
-            size="small"
-            placeholder="Search by return #, invoice #, or customer…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            sx={{ minWidth: 320 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
+      <Stack direction="row" mb={2.5}>
+        <TextField
+          size="small"
+          placeholder="Search by return #, invoice #, or customer…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          sx={{ minWidth: 320 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+            ...(search ? {
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton size="small" onClick={() => setSearch('')}>
+                    <CloseIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
                 </InputAdornment>
               ),
-              ...(search ? {
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setSearch('')}>
-                      <CloseIcon sx={{ fontSize: 16 }} />
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              } : {}),
-            }}
-          />
-
-          <Stack direction="row" spacing={1} flexWrap="wrap">
-            {STATUS_FILTERS.map((f) => (
-              <Chip
-                key={f.value}
-                label={f.label}
-                clickable
-                size="small"
-                color={statusFilter === f.value ? 'primary' : 'default'}
-                variant={statusFilter === f.value ? 'filled' : 'outlined'}
-                onClick={() => {
-                  setStatusFilter(f.value);
-                  setPage(0);
-                }}
-                sx={{ fontWeight: 600, height: 32 }}
-              />
-            ))}
-          </Stack>
-        </Stack>
+            } : {}),
+          }}
+        />
       </Stack>
 
       {/* Returns Data Table */}
