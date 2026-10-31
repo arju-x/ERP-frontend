@@ -66,19 +66,38 @@ export default function PrintInvoice({ open, sale, onClose, onReturn, onCancel }
     if (!el) return;
     try {
       const canvas = await html2canvas(el, {
-        scale: 3,          // high-res
+        scale: 3,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
       });
       const imgData = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.href = imgData;
-      link.download = `${sale.invoiceNumber}.png`;
-      link.click();
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        window.alert('Allow pop-ups for this site to print the receipt.');
+        return;
+      }
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>${sale.invoiceNumber}</title>
+            <style>
+              @page { margin: 0; size: 80mm auto; }
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body { background: #fff; }
+              img { width: 80mm; display: block; }
+            </style>
+          </head>
+          <body>
+            <img src="${imgData}" onload="window.print(); window.close();" />
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
     } catch (err) {
-      console.error('Image export failed:', err);
-      window.alert('Could not export receipt as image.');
+      console.error('Image print failed:', err);
+      window.alert('Could not print receipt as image.');
     }
   };
 
@@ -126,7 +145,7 @@ export default function PrintInvoice({ open, sale, onClose, onReturn, onCancel }
                       </MenuItem>
                       <MenuItem onClick={handlePrintImage} sx={{ gap: 1.5, py: 1 }}>
                         <ImageIcon fontSize="small" color="primary" />
-                        Download as Image
+                        Print as Image
                       </MenuItem>
                     </MenuList>
                   </ClickAwayListener>
