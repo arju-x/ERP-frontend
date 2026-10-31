@@ -157,7 +157,7 @@ export default function PrintInvoice({ open, sale, onClose, onReturn, onCancel }
           font: 10pt/1.3 Arial, sans-serif;
         }
         .receipt-header { text-align: center; }
-        .receipt-header h1 { margin: 0 0 1mm; font-size: 15pt; line-height: 1.15; font-weight: 800; text-transform: uppercase; }
+        .receipt-header h1 { margin: 0 0 1mm; font-size: 12pt; line-height: 1.15; font-weight: 800; text-transform: uppercase; white-space: nowrap; }
         .receipt-hours { margin-top: 3mm; padding-top: 2mm; border-top: 1px dashed #888; text-align: center; font-size: 8pt; line-height: 1.25; }
         .receipt-rule { margin: 2.5mm 0; border-top: 1px dashed #555; }
         .receipt-meta { display: grid; gap: 1mm; font-size: 9pt; overflow-wrap: anywhere; }
