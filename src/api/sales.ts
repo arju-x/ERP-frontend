@@ -28,8 +28,8 @@ export const salesApi = {
     return res.data.data;
   },
 
-  cancelSale: async (id: string): Promise<Sale> => {
-    const res = await apiClient.post(`/sales/${id}/cancel`);
+  cancelSale: async (id: string, reason: string): Promise<Sale> => {
+    const res = await apiClient.post(`/sales/${id}/cancel`, { reason });
     return res.data.data;
   },
 

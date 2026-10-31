@@ -11,10 +11,12 @@ import {
   Print as PrintIcon,
   ReceiptLong as ReceiptIcon,
   Replay as ReturnHistoryIcon,
+  ReceiptOutlined as AdjustedBillIcon,
 } from '@mui/icons-material';
-import { Sale } from '../../types/sale.types';
+import { Sale, SaleItem } from '../../types/sale.types';
 import { CustomerReturn } from '../../types/return.types';
 import { returnsApi } from '../../api/returns';
+import PrintInvoice from './PrintInvoice';
 
 interface SaleDetailDialogProps {
   open: boolean;
@@ -77,6 +79,7 @@ export default function SaleDetailDialog({
 }: SaleDetailDialogProps) {
   const [returns, setReturns] = useState<CustomerReturn[]>([]);
   const [returnsLoading, setReturnsLoading] = useState(false);
+  const [showAdjustedBill, setShowAdjustedBill] = useState(false);
 
   // Fetch returns whenever the dialog opens for a sale
   useEffect(() => {
@@ -96,7 +99,52 @@ export default function SaleDetailDialog({
 
   const isConfirmed = sale.status === 'confirmed';
 
+  // ── Build adjusted sale (returned items removed / qty reduced) ────────────
+  const hasReturns = returns.length > 0;
+
+  const adjustedSale: Sale | null = hasReturns ? (() => {
+    // Sum returned qty per product SKU across all completed/approved returns
+    const returnedQtyBySku: Record<string, number> = {};
+    for (const ret of returns) {
+      if (ret.status === 'rejected') continue;
+      for (const ri of ret.items) {
+        const sku = ri.product.sku;
+        returnedQtyBySku[sku] = (returnedQtyBySku[sku] ?? 0) + ri.quantity;
+      }
+    }
+
+    const adjustedItems: SaleItem[] = [];
+    for (const item of sale.items) {
+      const returnedQty = returnedQtyBySku[item.sku] ?? 0;
+      const remainingQty = item.quantity - returnedQty;
+      if (remainingQty <= 0) continue; // fully returned — exclude
+      const ratio = remainingQty / item.quantity;
+      adjustedItems.push({
+        ...item,
+        quantity: remainingQty,
+        discountAmount: parseFloat((item.discountAmount * ratio).toFixed(2)),
+        lineTotal: parseFloat((item.lineTotal * ratio).toFixed(2)),
+      });
+    }
+
+    const subtotal    = parseFloat(adjustedItems.reduce((s, i) => s + i.quantity * i.unitPrice, 0).toFixed(2));
+    const discountTotal = parseFloat(adjustedItems.reduce((s, i) => s + i.discountAmount, 0).toFixed(2));
+    const grandTotal  = parseFloat(adjustedItems.reduce((s, i) => s + i.lineTotal, 0).toFixed(2));
+
+    return {
+      ...sale,
+      items: adjustedItems,
+      subtotal,
+      discountTotal,
+      grandTotal,
+      paidAmount: grandTotal,
+      balanceDue: 0,
+      notes: `Adjusted bill (excluding returned items). Original: ${sale.invoiceNumber}`,
+    };
+  })() : null;
+
   return (
+    <>
     <Dialog
       open={open}
       onClose={onClose}
@@ -138,6 +186,20 @@ export default function SaleDetailDialog({
               <Button startIcon={<PrintIcon />} variant="outlined" size="small" onClick={onShowBill}
                 sx={{ borderRadius: 2, fontWeight: 600 }}>
                 Show Bill
+              </Button>
+            </Tooltip>
+          )}
+          {hasReturns && adjustedSale && (
+            <Tooltip title="Print bill without returned items">
+              <Button
+                startIcon={<AdjustedBillIcon />}
+                variant="outlined"
+                color="warning"
+                size="small"
+                onClick={() => setShowAdjustedBill(true)}
+                sx={{ borderRadius: 2, fontWeight: 600 }}
+              >
+                Adjusted Bill
               </Button>
             </Tooltip>
           )}
@@ -448,6 +510,14 @@ export default function SaleDetailDialog({
         )}
       </DialogContent>
     </Dialog>
+
+    {/* ── Adjusted bill (returned items excluded) ──────────────────────── */}
+    <PrintInvoice
+      open={showAdjustedBill}
+      sale={adjustedSale}
+      onClose={() => setShowAdjustedBill(false)}
+    />
+  </>
   );
 }
 
