@@ -1,8 +1,19 @@
-import React from 'react';
-import { Box, Button, Dialog, DialogContent, IconButton, Stack, Tooltip } from '@mui/material';
-import { Print as PrintIcon, Close as CloseIcon, AssignmentReturn as ReturnIcon, Block as CancelIcon } from '@mui/icons-material';
+import React, { useRef, useState } from 'react';
+import {
+  Box, Button, ButtonGroup, Dialog, DialogContent, IconButton,
+  MenuItem, MenuList, Paper, Popper, Grow, ClickAwayListener, Stack, Tooltip,
+} from '@mui/material';
+import {
+  Print as PrintIcon,
+  Close as CloseIcon,
+  AssignmentReturn as ReturnIcon,
+  Block as CancelIcon,
+  ArrowDropDown as ArrowDropDownIcon,
+  PictureAsPdf as PdfIcon,
+  Image as ImageIcon,
+} from '@mui/icons-material';
+import html2canvas from 'html2canvas';
 import { Sale } from '../../types/sale.types';
-
 
 interface PrintInvoiceProps {
   open: boolean;
@@ -16,31 +27,30 @@ const fmt = (n: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 }).format(n);
 
 export default function PrintInvoice({ open, sale, onClose, onReturn, onCancel }: PrintInvoiceProps) {
+  const [menuOpen, setMenuOpen]   = useState(false);
+  const anchorRef                 = useRef<HTMLDivElement>(null);
+  const printAreaRef              = useRef<HTMLDivElement>(null);
+
   if (!sale) return null;
 
-  const shopName = import.meta.env.VITE_SHOP_NAME || import.meta.env.VITE_APP_NAME || 'My Shop';
-  const shopAddress = import.meta.env.VITE_SHOP_ADDRESS;
-  const shopPhone = import.meta.env.VITE_SHOP_PHONE;
-  const shopWorkingDays = import.meta.env.VITE_SHOP_WORKING_DAYS;
-  const shopWorkingHours = import.meta.env.VITE_SHOP_WORKING_HOURS;
+  const shopName        = import.meta.env.VITE_SHOP_NAME || import.meta.env.VITE_APP_NAME || 'My Shop';
+  const shopAddress     = import.meta.env.VITE_SHOP_ADDRESS as string | undefined;
+  const shopPhone       = import.meta.env.VITE_SHOP_PHONE as string | undefined;
+  const shopWorkingDays = import.meta.env.VITE_SHOP_WORKING_DAYS as string | undefined;
+  const shopWorkingHours= import.meta.env.VITE_SHOP_WORKING_HOURS as string | undefined;
 
-  const handlePrint = () => {
+  // ── Print as PDF ────────────────────────────────────────────────────────────
+  const handlePrintPdf = () => {
+    setMenuOpen(false);
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       window.alert('Allow pop-ups for this site to print the receipt.');
       return;
     }
-
     void import('../../utils/receiptPdf')
-      .then(({ printReceiptPdf }) => printReceiptPdf(
-        sale,
-        shopName,
-        shopAddress,
-        shopPhone,
-        shopWorkingDays,
-        shopWorkingHours,
-        printWindow,
-      ))
+      .then(({ printReceiptPdf }) =>
+        printReceiptPdf(sale, shopName, shopAddress, shopPhone, shopWorkingDays, shopWorkingHours, printWindow)
+      )
       .catch((error: unknown) => {
         console.error('Receipt printing failed:', error);
         printWindow.close();
@@ -48,6 +58,30 @@ export default function PrintInvoice({ open, sale, onClose, onReturn, onCancel }
         window.alert(`Could not prepare the receipt for printing.${detail}`);
       });
   };
+
+  // ── Print as Image ──────────────────────────────────────────────────────────
+  const handlePrintImage = async () => {
+    setMenuOpen(false);
+    const el = printAreaRef.current;
+    if (!el) return;
+    try {
+      const canvas = await html2canvas(el, {
+        scale: 3,          // high-res
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = imgData;
+      link.download = `${sale.invoiceNumber}.png`;
+      link.click();
+    } catch (err) {
+      console.error('Image export failed:', err);
+      window.alert('Could not export receipt as image.');
+    }
+  };
+
   return (
     <Dialog
       open={open}
@@ -57,13 +91,64 @@ export default function PrintInvoice({ open, sale, onClose, onReturn, onCancel }
     >
       <DialogContent sx={{ p: 0, overflowX: 'hidden' }}>
         <Stack className="receipt-toolbar" direction="row" justifyContent="flex-end" spacing={1} sx={{ p: 1.25 }}>
-          <Button startIcon={<PrintIcon />} variant="contained" size="small" onClick={handlePrint}>Print</Button>
-          {onReturn && sale.status === 'confirmed' && <Button startIcon={<ReturnIcon />} size="small" onClick={onReturn}>Return Items</Button>}
-          {onCancel && sale.status === 'confirmed' && <Button startIcon={<CancelIcon />} color="error" size="small" onClick={onCancel}>Cancel Bill</Button>}
+
+          {/* ── Split Print button ── */}
+          <ButtonGroup variant="contained" size="small" ref={anchorRef} disableElevation>
+            <Button startIcon={<PrintIcon />} onClick={handlePrintPdf}>
+              Print
+            </Button>
+            <Button
+              size="small"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              aria-label="select print format"
+              sx={{ px: 0.5, minWidth: 28 }}
+            >
+              <ArrowDropDownIcon fontSize="small" />
+            </Button>
+          </ButtonGroup>
+
+          <Popper
+            open={menuOpen}
+            anchorEl={anchorRef.current}
+            placement="bottom-end"
+            transition
+            disablePortal
+            style={{ zIndex: 1400 }}
+          >
+            {({ TransitionProps }) => (
+              <Grow {...TransitionProps}>
+                <Paper elevation={4} sx={{ borderRadius: 1.5, mt: 0.5, minWidth: 170 }}>
+                  <ClickAwayListener onClickAway={() => setMenuOpen(false)}>
+                    <MenuList dense disablePadding sx={{ py: 0.5 }}>
+                      <MenuItem onClick={handlePrintPdf} sx={{ gap: 1.5, py: 1 }}>
+                        <PdfIcon fontSize="small" color="error" />
+                        Print as PDF
+                      </MenuItem>
+                      <MenuItem onClick={handlePrintImage} sx={{ gap: 1.5, py: 1 }}>
+                        <ImageIcon fontSize="small" color="primary" />
+                        Download as Image
+                      </MenuItem>
+                    </MenuList>
+                  </ClickAwayListener>
+                </Paper>
+              </Grow>
+            )}
+          </Popper>
+
+          {onReturn && sale.status === 'confirmed' && (
+            <Button startIcon={<ReturnIcon />} size="small" onClick={onReturn}>Return Items</Button>
+          )}
+          {onCancel && sale.status === 'confirmed' && (
+            <Button startIcon={<CancelIcon />} color="error" size="small" onClick={onCancel}>Cancel Bill</Button>
+          )}
         </Stack>
 
-        <Box id="invoice-print-area" className="thermal-receipt">
-          {sale.status === 'cancelled' && <div style={{ color: '#c62828', textAlign: 'center', fontWeight: 700, marginBottom: 8 }}>CANCELLED BILL</div>}
+        <Box ref={printAreaRef} id="invoice-print-area" className="thermal-receipt">
+          {sale.status === 'cancelled' && (
+            <div style={{ color: '#c62828', textAlign: 'center', fontWeight: 700, marginBottom: 8 }}>
+              CANCELLED BILL
+            </div>
+          )}
           <header className="receipt-header">
             <h1>{shopName}</h1>
             {shopAddress && shopAddress.split('\\n').map((line: string, i: number) => (
