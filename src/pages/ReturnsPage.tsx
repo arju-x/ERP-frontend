@@ -541,7 +541,6 @@ export default function ReturnsPage() {
                 <TableCell align="center" sx={{ color: 'white', fontWeight: 700, py: 1.5, px: 1.5, fontSize: 12.5, width: { md: '11%' } }}>
                   STATUS
                 </TableCell>
-                <TableCell align="right" sx={{ color: 'white', fontWeight: 700, py: 1.5, px: 1.5, width: { md: '5%' } }} />
               </TableRow>
             </TableHead>
             <TableBody>
@@ -572,7 +571,9 @@ export default function ReturnsPage() {
                   <TableRow
                     key={r._id}
                     hover
+                    onClick={() => setViewReturn(r)}
                     sx={{
+                      cursor: 'pointer',
                       bgcolor: i % 2 === 0 ? 'transparent' : (theme.palette.mode === 'light' ? '#fafafa' : '#1a1a1a'),
                       '&:hover': { bgcolor: theme.palette.mode === 'light' ? '#f0f4ff' : '#1e2a3a' },
                     }}
@@ -582,16 +583,13 @@ export default function ReturnsPage() {
                         label={r.returnNumber}
                         size="small"
                         variant="outlined"
-                        onClick={() => setViewReturn(r)}
                         sx={{
                           fontFamily: 'monospace',
                           fontWeight: 700,
-                          cursor: 'pointer',
                           color: 'primary.main',
                           borderColor: 'primary.light',
                           fontSize: 11,
                           height: 24,
-                          '&:hover': { bgcolor: 'primary.light', color: 'white' },
                         }}
                       />
                     </TableCell>
@@ -660,13 +658,6 @@ export default function ReturnsPage() {
                     </TableCell>
                     <TableCell align="center" sx={{ px: 1.5 }}>
                       <ReturnStatusBadge status={r.status} />
-                    </TableCell>
-                    <TableCell align="right" sx={{ px: 1.5 }}>
-                      <Tooltip title="View Details">
-                        <IconButton size="small" onClick={() => setViewReturn(r)}>
-                          <ViewIcon sx={{ fontSize: 18 }} />
-                        </IconButton>
-                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))
